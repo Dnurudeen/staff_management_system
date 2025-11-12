@@ -102,14 +102,16 @@ export default function Chat({
     // Listen for new messages
     useEffect(() => {
         if (selectedConversation && echo) {
-            const channel = echo.private(`conversation.${selectedConversation.id}`);
-            
+            const channel = echo.private(
+                `conversation.${selectedConversation.id}`
+            );
+
             // Listen for new messages from other users
             channel.listen("MessageSent", (e) => {
                 console.log("New message received:", e.message);
                 // Check if message already exists (prevent duplicates)
                 setConversationMessages((prev) => {
-                    const exists = prev.some(msg => msg.id === e.message.id);
+                    const exists = prev.some((msg) => msg.id === e.message.id);
                     if (exists) return prev;
                     return [...prev, e.message];
                 });
@@ -378,7 +380,9 @@ export default function Chat({
         const k = 1024;
         const sizes = ["Bytes", "KB", "MB", "GB"];
         const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return Math.round(bytes / Math.pow(k, i) * 100) / 100 + " " + sizes[i];
+        return (
+            Math.round((bytes / Math.pow(k, i)) * 100) / 100 + " " + sizes[i]
+        );
     };
 
     // Helper function to format voice duration
@@ -624,25 +628,37 @@ export default function Chat({
                                                             }`}
                                                         >
                                                             {/* Text Message */}
-                                                            {message.type === "text" && (
+                                                            {message.type ===
+                                                                "text" && (
                                                                 <p className="text-sm whitespace-pre-wrap break-words">
-                                                                    {message.content}
+                                                                    {
+                                                                        message.content
+                                                                    }
                                                                 </p>
                                                             )}
 
                                                             {/* File Message with Thumbnail */}
-                                                            {message.type === "file" && (
+                                                            {message.type ===
+                                                                "file" && (
                                                                 <div className="space-y-2">
                                                                     {/* Image Preview */}
-                                                                    {isImage(message.file_type) && (
+                                                                    {isImage(
+                                                                        message.file_type
+                                                                    ) && (
                                                                         <div className="relative group">
                                                                             <img
                                                                                 src={`/storage/${message.file_path}`}
-                                                                                alt={message.file_name}
+                                                                                alt={
+                                                                                    message.file_name
+                                                                                }
                                                                                 className="max-w-xs rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
                                                                                 onClick={() => {
-                                                                                    setPreviewFile(message);
-                                                                                    setShowFilePreview(true);
+                                                                                    setPreviewFile(
+                                                                                        message
+                                                                                    );
+                                                                                    setShowFilePreview(
+                                                                                        true
+                                                                                    );
                                                                                 }}
                                                                             />
                                                                             <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 rounded-lg transition-all flex items-center justify-center">
@@ -652,7 +668,9 @@ export default function Chat({
                                                                     )}
 
                                                                     {/* Video Preview */}
-                                                                    {isVideo(message.file_type) && (
+                                                                    {isVideo(
+                                                                        message.file_type
+                                                                    ) && (
                                                                         <div className="relative">
                                                                             <video
                                                                                 src={`/storage/${message.file_path}`}
@@ -663,17 +681,35 @@ export default function Chat({
                                                                     )}
 
                                                                     {/* PDF Preview */}
-                                                                    {isPDF(message.file_type) && (
+                                                                    {isPDF(
+                                                                        message.file_type
+                                                                    ) && (
                                                                         <div className="flex items-center space-x-3 p-3 bg-white bg-opacity-10 rounded-lg">
                                                                             <div className="flex-shrink-0">
-                                                                                <DocumentTextIcon className={`h-10 w-10 ${isOwnMessage ? "text-indigo-200" : "text-red-500"}`} />
+                                                                                <DocumentTextIcon
+                                                                                    className={`h-10 w-10 ${
+                                                                                        isOwnMessage
+                                                                                            ? "text-indigo-200"
+                                                                                            : "text-red-500"
+                                                                                    }`}
+                                                                                />
                                                                             </div>
                                                                             <div className="flex-1 min-w-0">
                                                                                 <p className="text-sm font-medium truncate">
-                                                                                    {message.file_name}
+                                                                                    {
+                                                                                        message.file_name
+                                                                                    }
                                                                                 </p>
-                                                                                <p className={`text-xs ${isOwnMessage ? "text-indigo-200" : "text-gray-500"}`}>
-                                                                                    {formatFileSize(message.file_size)}
+                                                                                <p
+                                                                                    className={`text-xs ${
+                                                                                        isOwnMessage
+                                                                                            ? "text-indigo-200"
+                                                                                            : "text-gray-500"
+                                                                                    }`}
+                                                                                >
+                                                                                    {formatFileSize(
+                                                                                        message.file_size
+                                                                                    )}
                                                                                 </p>
                                                                             </div>
                                                                             <a
@@ -681,54 +717,107 @@ export default function Chat({
                                                                                 download
                                                                                 className="flex-shrink-0"
                                                                             >
-                                                                                <ArrowDownTrayIcon className={`h-5 w-5 ${isOwnMessage ? "text-white hover:text-indigo-200" : "text-gray-600 hover:text-gray-900"}`} />
+                                                                                <ArrowDownTrayIcon
+                                                                                    className={`h-5 w-5 ${
+                                                                                        isOwnMessage
+                                                                                            ? "text-white hover:text-indigo-200"
+                                                                                            : "text-gray-600 hover:text-gray-900"
+                                                                                    }`}
+                                                                                />
                                                                             </a>
                                                                         </div>
                                                                     )}
 
                                                                     {/* Other Files */}
-                                                                    {!isImage(message.file_type) && !isVideo(message.file_type) && !isPDF(message.file_type) && (
-                                                                        <div className="flex items-center space-x-3 p-3 bg-white bg-opacity-10 rounded-lg">
-                                                                            <div className="flex-shrink-0">
-                                                                                <DocumentIcon className={`h-10 w-10 ${isOwnMessage ? "text-indigo-200" : "text-gray-500"}`} />
+                                                                    {!isImage(
+                                                                        message.file_type
+                                                                    ) &&
+                                                                        !isVideo(
+                                                                            message.file_type
+                                                                        ) &&
+                                                                        !isPDF(
+                                                                            message.file_type
+                                                                        ) && (
+                                                                            <div className="flex items-center space-x-3 p-3 bg-white bg-opacity-10 rounded-lg">
+                                                                                <div className="flex-shrink-0">
+                                                                                    <DocumentIcon
+                                                                                        className={`h-10 w-10 ${
+                                                                                            isOwnMessage
+                                                                                                ? "text-indigo-200"
+                                                                                                : "text-gray-500"
+                                                                                        }`}
+                                                                                    />
+                                                                                </div>
+                                                                                <div className="flex-1 min-w-0">
+                                                                                    <p className="text-sm font-medium truncate">
+                                                                                        {
+                                                                                            message.file_name
+                                                                                        }
+                                                                                    </p>
+                                                                                    <p
+                                                                                        className={`text-xs ${
+                                                                                            isOwnMessage
+                                                                                                ? "text-indigo-200"
+                                                                                                : "text-gray-500"
+                                                                                        }`}
+                                                                                    >
+                                                                                        {formatFileSize(
+                                                                                            message.file_size
+                                                                                        )}
+                                                                                    </p>
+                                                                                </div>
+                                                                                <a
+                                                                                    href={`/storage/${message.file_path}`}
+                                                                                    download
+                                                                                    className="flex-shrink-0"
+                                                                                >
+                                                                                    <ArrowDownTrayIcon
+                                                                                        className={`h-5 w-5 ${
+                                                                                            isOwnMessage
+                                                                                                ? "text-white hover:text-indigo-200"
+                                                                                                : "text-gray-600 hover:text-gray-900"
+                                                                                        }`}
+                                                                                    />
+                                                                                </a>
                                                                             </div>
-                                                                            <div className="flex-1 min-w-0">
-                                                                                <p className="text-sm font-medium truncate">
-                                                                                    {message.file_name}
-                                                                                </p>
-                                                                                <p className={`text-xs ${isOwnMessage ? "text-indigo-200" : "text-gray-500"}`}>
-                                                                                    {formatFileSize(message.file_size)}
-                                                                                </p>
-                                                                            </div>
-                                                                            <a
-                                                                                href={`/storage/${message.file_path}`}
-                                                                                download
-                                                                                className="flex-shrink-0"
-                                                                            >
-                                                                                <ArrowDownTrayIcon className={`h-5 w-5 ${isOwnMessage ? "text-white hover:text-indigo-200" : "text-gray-600 hover:text-gray-900"}`} />
-                                                                            </a>
-                                                                        </div>
-                                                                    )}
+                                                                        )}
                                                                 </div>
                                                             )}
 
                                                             {/* Voice Note with Modern Player */}
-                                                            {message.type === "voice" && (
+                                                            {message.type ===
+                                                                "voice" && (
                                                                 <div className="flex items-center space-x-3 min-w-[250px]">
                                                                     {/* Play/Pause Button */}
                                                                     <button
                                                                         onClick={() => {
-                                                                            const audio = document.getElementById(`audio-${message.id}`);
-                                                                            if (playingVoiceId === message.id) {
+                                                                            const audio =
+                                                                                document.getElementById(
+                                                                                    `audio-${message.id}`
+                                                                                );
+                                                                            if (
+                                                                                playingVoiceId ===
+                                                                                message.id
+                                                                            ) {
                                                                                 audio.pause();
-                                                                                setPlayingVoiceId(null);
+                                                                                setPlayingVoiceId(
+                                                                                    null
+                                                                                );
                                                                             } else {
                                                                                 // Pause any currently playing audio
-                                                                                if (playingVoiceId) {
-                                                                                    document.getElementById(`audio-${playingVoiceId}`)?.pause();
+                                                                                if (
+                                                                                    playingVoiceId
+                                                                                ) {
+                                                                                    document
+                                                                                        .getElementById(
+                                                                                            `audio-${playingVoiceId}`
+                                                                                        )
+                                                                                        ?.pause();
                                                                                 }
                                                                                 audio.play();
-                                                                                setPlayingVoiceId(message.id);
+                                                                                setPlayingVoiceId(
+                                                                                    message.id
+                                                                                );
                                                                             }
                                                                         }}
                                                                         className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-colors ${
@@ -737,40 +826,80 @@ export default function Chat({
                                                                                 : "bg-indigo-600 hover:bg-indigo-700"
                                                                         }`}
                                                                     >
-                                                                        {playingVoiceId === message.id ? (
-                                                                            <PauseIcon className={`h-5 w-5 ${isOwnMessage ? "text-white" : "text-white"}`} />
+                                                                        {playingVoiceId ===
+                                                                        message.id ? (
+                                                                            <PauseIcon
+                                                                                className={`h-5 w-5 ${
+                                                                                    isOwnMessage
+                                                                                        ? "text-white"
+                                                                                        : "text-white"
+                                                                                }`}
+                                                                            />
                                                                         ) : (
-                                                                            <PlayIcon className={`h-5 w-5 ${isOwnMessage ? "text-white" : "text-white"}`} />
+                                                                            <PlayIcon
+                                                                                className={`h-5 w-5 ${
+                                                                                    isOwnMessage
+                                                                                        ? "text-white"
+                                                                                        : "text-white"
+                                                                                }`}
+                                                                            />
                                                                         )}
                                                                     </button>
 
                                                                     {/* Waveform Visualization (Simulated) */}
                                                                     <div className="flex-1 flex items-center space-x-1">
-                                                                        {[...Array(20)].map((_, i) => (
-                                                                            <div
-                                                                                key={i}
-                                                                                className={`w-1 rounded-full transition-all ${
-                                                                                    isOwnMessage
-                                                                                        ? "bg-white bg-opacity-60"
-                                                                                        : "bg-indigo-600"
-                                                                                }`}
-                                                                                style={{
-                                                                                    height: `${Math.random() * 16 + 8}px`,
-                                                                                }}
-                                                                            ></div>
-                                                                        ))}
+                                                                        {[
+                                                                            ...Array(
+                                                                                20
+                                                                            ),
+                                                                        ].map(
+                                                                            (
+                                                                                _,
+                                                                                i
+                                                                            ) => (
+                                                                                <div
+                                                                                    key={
+                                                                                        i
+                                                                                    }
+                                                                                    className={`w-1 rounded-full transition-all ${
+                                                                                        isOwnMessage
+                                                                                            ? "bg-white bg-opacity-60"
+                                                                                            : "bg-indigo-600"
+                                                                                    }`}
+                                                                                    style={{
+                                                                                        height: `${
+                                                                                            Math.random() *
+                                                                                                16 +
+                                                                                            8
+                                                                                        }px`,
+                                                                                    }}
+                                                                                ></div>
+                                                                            )
+                                                                        )}
                                                                     </div>
 
                                                                     {/* Duration */}
-                                                                    <span className={`text-xs font-medium ${isOwnMessage ? "text-indigo-100" : "text-gray-600"}`}>
-                                                                        {formatDuration(message.voice_duration)}
+                                                                    <span
+                                                                        className={`text-xs font-medium ${
+                                                                            isOwnMessage
+                                                                                ? "text-indigo-100"
+                                                                                : "text-gray-600"
+                                                                        }`}
+                                                                    >
+                                                                        {formatDuration(
+                                                                            message.voice_duration
+                                                                        )}
                                                                     </span>
 
                                                                     {/* Hidden Audio Element */}
                                                                     <audio
                                                                         id={`audio-${message.id}`}
                                                                         src={`/storage/${message.file_path}`}
-                                                                        onEnded={() => setPlayingVoiceId(null)}
+                                                                        onEnded={() =>
+                                                                            setPlayingVoiceId(
+                                                                                null
+                                                                            )
+                                                                        }
                                                                         className="hidden"
                                                                     />
                                                                 </div>
@@ -784,7 +913,9 @@ export default function Chat({
                                                                         : "text-gray-500"
                                                                 }`}
                                                             >
-                                                                {formatTime(message.created_at)}
+                                                                {formatTime(
+                                                                    message.created_at
+                                                                )}
                                                             </p>
                                                         </div>
                                                     </div>
@@ -926,213 +1057,202 @@ export default function Chat({
                 show={showNewChat}
                 onClose={() => setShowNewChat(false)}
                 maxWidth="2xl"
+                title="New Chat"
             >
-                <div className="p-6">
-                    <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                        New Chat
-                    </h2>
-
-                    {/* Chat Type Selector */}
-                    <div className="flex space-x-4 mb-6">
-                        <button
-                            onClick={() => setChatType("private")}
-                            className={`flex-1 py-3 px-4 rounded-lg border-2 transition-colors ${
-                                chatType === "private"
-                                    ? "border-indigo-600 bg-indigo-50 text-indigo-700"
-                                    : "border-gray-300 hover:border-gray-400"
-                            }`}
-                        >
-                            <div className="font-semibold">Private Chat</div>
-                            <div className="text-sm text-gray-600">
-                                One-on-one conversation
-                            </div>
-                        </button>
-                        <button
-                            onClick={() => setChatType("group")}
-                            className={`flex-1 py-3 px-4 rounded-lg border-2 transition-colors ${
-                                chatType === "group"
-                                    ? "border-indigo-600 bg-indigo-50 text-indigo-700"
-                                    : "border-gray-300 hover:border-gray-400"
-                            }`}
-                        >
-                            <div className="font-semibold">Group Chat</div>
-                            <div className="text-sm text-gray-600">
-                                Multiple participants
-                            </div>
-                        </button>
-                    </div>
-
-                    {/* Group Name (only for group chats) */}
-                    {chatType === "group" && (
-                        <div className="mb-4 space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Group Name *
-                                </label>
-                                <input
-                                    type="text"
-                                    value={groupName}
-                                    onChange={(e) =>
-                                        setGroupName(e.target.value)
-                                    }
-                                    placeholder="Enter group name"
-                                    className="w-full rounded-lg border-gray-300 focus:ring-indigo-500 focus:border-indigo-500"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Description (optional)
-                                </label>
-                                <textarea
-                                    value={groupDescription}
-                                    onChange={(e) =>
-                                        setGroupDescription(e.target.value)
-                                    }
-                                    placeholder="Enter group description"
-                                    rows={2}
-                                    className="w-full rounded-lg border-gray-300 focus:ring-indigo-500 focus:border-indigo-500"
-                                />
-                            </div>
+                {/* Chat Type Selector */}
+                <div className="flex space-x-4 mb-6">
+                    <button
+                        onClick={() => setChatType("private")}
+                        className={`flex-1 py-3 px-4 rounded-lg border-2 transition-colors ${
+                            chatType === "private"
+                                ? "border-indigo-600 bg-indigo-50 text-indigo-700"
+                                : "border-gray-300 hover:border-gray-400"
+                        }`}
+                    >
+                        <div className="font-semibold">Private Chat</div>
+                        <div className="text-sm text-gray-600">
+                            One-on-one conversation
                         </div>
-                    )}
+                    </button>
+                    <button
+                        onClick={() => setChatType("group")}
+                        className={`flex-1 py-3 px-4 rounded-lg border-2 transition-colors ${
+                            chatType === "group"
+                                ? "border-indigo-600 bg-indigo-50 text-indigo-700"
+                                : "border-gray-300 hover:border-gray-400"
+                        }`}
+                    >
+                        <div className="font-semibold">Group Chat</div>
+                        <div className="text-sm text-gray-600">
+                            Multiple participants
+                        </div>
+                    </button>
+                </div>
 
-                    {/* Search Users */}
-                    <div className="mb-4">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                            {chatType === "private"
-                                ? "Select User"
-                                : "Select Participants"}
-                        </label>
-                        <div className="relative">
-                            <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                {/* Group Name (only for group chats) */}
+                {chatType === "group" && (
+                    <div className="mb-4 space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Group Name *
+                            </label>
                             <input
                                 type="text"
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                placeholder="Search users..."
-                                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
+                                value={groupName}
+                                onChange={(e) => setGroupName(e.target.value)}
+                                placeholder="Enter group name"
+                                className="w-full rounded-lg border-gray-300 focus:ring-indigo-500 focus:border-indigo-500"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Description (optional)
+                            </label>
+                            <textarea
+                                value={groupDescription}
+                                onChange={(e) =>
+                                    setGroupDescription(e.target.value)
+                                }
+                                placeholder="Enter group description"
+                                rows={2}
+                                className="w-full rounded-lg border-gray-300 focus:ring-indigo-500 focus:border-indigo-500"
                             />
                         </div>
                     </div>
+                )}
 
-                    {/* User List */}
-                    <div className="max-h-96 overflow-y-auto border border-gray-200 rounded-lg">
-                        {filteredUsers.length === 0 ? (
-                            <div className="p-8 text-center text-gray-500">
-                                No users found
-                            </div>
-                        ) : (
-                            filteredUsers.map((user) => (
-                                <div
-                                    key={user.id}
-                                    onClick={() => {
-                                        if (chatType === "private") {
-                                            handleCreatePrivateChat(user.id);
-                                        } else {
-                                            toggleUserSelection(user.id);
-                                        }
-                                    }}
-                                    className={`p-4 border-b border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors ${
-                                        chatType === "group" &&
-                                        selectedUsers.includes(user.id)
-                                            ? "bg-indigo-50"
-                                            : ""
-                                    }`}
-                                >
-                                    <div className="flex items-center space-x-3">
-                                        <div className="relative flex-shrink-0">
-                                            {user.avatar ? (
-                                                <img
-                                                    src={`/storage/${user.avatar}`}
-                                                    alt={user.name}
-                                                    className="h-10 w-10 rounded-full"
-                                                />
-                                            ) : (
-                                                <div className="h-10 w-10 rounded-full bg-indigo-600 flex items-center justify-center text-white font-semibold">
-                                                    {user.name
-                                                        .charAt(0)
-                                                        .toUpperCase()}
-                                                </div>
-                                            )}
-                                            {isOnline(user.id) && (
-                                                <span className="absolute bottom-0 right-0 block h-3 w-3 rounded-full bg-green-400 ring-2 ring-white"></span>
-                                            )}
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-sm font-medium text-gray-900 truncate">
-                                                {user.name}
-                                            </p>
-                                            <p className="text-xs text-gray-500 truncate">
-                                                {user.email}
-                                                {user.department && (
-                                                    <span className="ml-2">
-                                                        • {user.department.name}
-                                                    </span>
-                                                )}
-                                            </p>
-                                        </div>
-                                        {chatType === "group" && (
-                                            <div>
-                                                {selectedUsers.includes(
-                                                    user.id
-                                                ) ? (
-                                                    <div className="h-5 w-5 rounded bg-indigo-600 flex items-center justify-center">
-                                                        <svg
-                                                            className="h-3 w-3 text-white"
-                                                            fill="none"
-                                                            viewBox="0 0 24 24"
-                                                            stroke="currentColor"
-                                                        >
-                                                            <path
-                                                                strokeLinecap="round"
-                                                                strokeLinejoin="round"
-                                                                strokeWidth={2}
-                                                                d="M5 13l4 4L19 7"
-                                                            />
-                                                        </svg>
-                                                    </div>
-                                                ) : (
-                                                    <div className="h-5 w-5 rounded border-2 border-gray-300"></div>
-                                                )}
+                {/* Search Users */}
+                <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                        {chatType === "private"
+                            ? "Select User"
+                            : "Select Participants"}
+                    </label>
+                    <div className="relative">
+                        <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                        <input
+                            type="text"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            placeholder="Search users..."
+                            className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
+                        />
+                    </div>
+                </div>
+
+                {/* User List */}
+                <div className="max-h-96 overflow-y-auto border border-gray-200 rounded-lg">
+                    {filteredUsers.length === 0 ? (
+                        <div className="p-8 text-center text-gray-500">
+                            No users found
+                        </div>
+                    ) : (
+                        filteredUsers.map((user) => (
+                            <div
+                                key={user.id}
+                                onClick={() => {
+                                    if (chatType === "private") {
+                                        handleCreatePrivateChat(user.id);
+                                    } else {
+                                        toggleUserSelection(user.id);
+                                    }
+                                }}
+                                className={`p-4 border-b border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors ${
+                                    chatType === "group" &&
+                                    selectedUsers.includes(user.id)
+                                        ? "bg-indigo-50"
+                                        : ""
+                                }`}
+                            >
+                                <div className="flex items-center space-x-3">
+                                    <div className="relative flex-shrink-0">
+                                        {user.avatar ? (
+                                            <img
+                                                src={`/storage/${user.avatar}`}
+                                                alt={user.name}
+                                                className="h-10 w-10 rounded-full"
+                                            />
+                                        ) : (
+                                            <div className="h-10 w-10 rounded-full bg-indigo-600 flex items-center justify-center text-white font-semibold">
+                                                {user.name
+                                                    .charAt(0)
+                                                    .toUpperCase()}
                                             </div>
                                         )}
+                                        {isOnline(user.id) && (
+                                            <span className="absolute bottom-0 right-0 block h-3 w-3 rounded-full bg-green-400 ring-2 ring-white"></span>
+                                        )}
                                     </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium text-gray-900 truncate">
+                                            {user.name}
+                                        </p>
+                                        <p className="text-xs text-gray-500 truncate">
+                                            {user.email}
+                                            {user.department && (
+                                                <span className="ml-2">
+                                                    • {user.department.name}
+                                                </span>
+                                            )}
+                                        </p>
+                                    </div>
+                                    {chatType === "group" && (
+                                        <div>
+                                            {selectedUsers.includes(user.id) ? (
+                                                <div className="h-5 w-5 rounded bg-indigo-600 flex items-center justify-center">
+                                                    <svg
+                                                        className="h-3 w-3 text-white"
+                                                        fill="none"
+                                                        viewBox="0 0 24 24"
+                                                        stroke="currentColor"
+                                                    >
+                                                        <path
+                                                            strokeLinecap="round"
+                                                            strokeLinejoin="round"
+                                                            strokeWidth={2}
+                                                            d="M5 13l4 4L19 7"
+                                                        />
+                                                    </svg>
+                                                </div>
+                                            ) : (
+                                                <div className="h-5 w-5 rounded border-2 border-gray-300"></div>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
-                            ))
-                        )}
-                    </div>
-
-                    {/* Action Buttons */}
-                    {chatType === "group" && (
-                        <div className="mt-6 flex justify-end space-x-3">
-                            <Button
-                                variant="ghost"
-                                onClick={() => {
-                                    setShowNewChat(false);
-                                    setGroupName("");
-                                    setGroupDescription("");
-                                    setSelectedUsers([]);
-                                    setSearchQuery("");
-                                }}
-                                disabled={isCreatingChat}
-                            >
-                                Cancel
-                            </Button>
-                            <Button
-                                onClick={handleCreateGroupChat}
-                                disabled={
-                                    isCreatingChat ||
-                                    !groupName.trim() ||
-                                    selectedUsers.length === 0
-                                }
-                            >
-                                {isCreatingChat
-                                    ? "Creating..."
-                                    : "Create Group"}
-                            </Button>
-                        </div>
+                            </div>
+                        ))
                     )}
                 </div>
+
+                {/* Action Buttons */}
+                {chatType === "group" && (
+                    <div className="mt-6 flex justify-end space-x-3">
+                        <Button
+                            variant="ghost"
+                            onClick={() => {
+                                setShowNewChat(false);
+                                setGroupName("");
+                                setGroupDescription("");
+                                setSelectedUsers([]);
+                                setSearchQuery("");
+                            }}
+                            disabled={isCreatingChat}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            onClick={handleCreateGroupChat}
+                            disabled={
+                                isCreatingChat ||
+                                !groupName.trim() ||
+                                selectedUsers.length === 0
+                            }
+                        >
+                            {isCreatingChat ? "Creating..." : "Create Group"}
+                        </Button>
+                    </div>
+                )}
             </Modal>
 
             {/* File Preview Modal */}
@@ -1143,23 +1263,19 @@ export default function Chat({
                     setPreviewFile(null);
                 }}
                 maxWidth="4xl"
+                title={previewFile?.file_name}
             >
                 {previewFile && (
-                    <div className="p-6">
-                        <div className="flex items-center justify-between mb-4">
-                            <h2 className="text-xl font-bold text-gray-900">
-                                {previewFile.file_name}
-                            </h2>
-                            <div className="flex items-center space-x-2">
-                                <a
-                                    href={`/storage/${previewFile.file_path}`}
-                                    download
-                                    className="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-                                >
-                                    <ArrowDownTrayIcon className="h-5 w-5 mr-2" />
-                                    Download
-                                </a>
-                            </div>
+                    <>
+                        <div className="flex items-center justify-end mb-4">
+                            <a
+                                href={`/storage/${previewFile.file_path}`}
+                                download
+                                className="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                            >
+                                <ArrowDownTrayIcon className="h-5 w-5 mr-2" />
+                                Download
+                            </a>
                         </div>
 
                         {/* Preview Content */}
@@ -1190,31 +1306,41 @@ export default function Chat({
                         {/* File Info */}
                         <div className="mt-4 grid grid-cols-2 gap-4 text-sm">
                             <div>
-                                <span className="font-medium text-gray-700">File Size:</span>
+                                <span className="font-medium text-gray-700">
+                                    File Size:
+                                </span>
                                 <span className="ml-2 text-gray-600">
                                     {formatFileSize(previewFile.file_size)}
                                 </span>
                             </div>
                             <div>
-                                <span className="font-medium text-gray-700">Type:</span>
+                                <span className="font-medium text-gray-700">
+                                    Type:
+                                </span>
                                 <span className="ml-2 text-gray-600">
                                     {previewFile.file_type}
                                 </span>
                             </div>
                             <div>
-                                <span className="font-medium text-gray-700">Uploaded by:</span>
+                                <span className="font-medium text-gray-700">
+                                    Uploaded by:
+                                </span>
                                 <span className="ml-2 text-gray-600">
                                     {previewFile.user?.name || "Unknown"}
                                 </span>
                             </div>
                             <div>
-                                <span className="font-medium text-gray-700">Date:</span>
+                                <span className="font-medium text-gray-700">
+                                    Date:
+                                </span>
                                 <span className="ml-2 text-gray-600">
-                                    {new Date(previewFile.created_at).toLocaleString()}
+                                    {new Date(
+                                        previewFile.created_at
+                                    ).toLocaleString()}
                                 </span>
                             </div>
                         </div>
-                    </div>
+                    </>
                 )}
             </Modal>
         </AuthenticatedLayout>

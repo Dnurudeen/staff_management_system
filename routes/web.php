@@ -92,6 +92,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Meetings
     Route::resource('meetings', MeetingController::class);
     Route::post('meetings/{meeting}/rsvp', [MeetingController::class, 'rsvp'])->name('meetings.rsvp');
+    Route::post('meetings/{meeting}/join', [MeetingController::class, 'join'])->name('meetings.join');
+    Route::post('meetings/{meeting}/leave', [MeetingController::class, 'leave'])->name('meetings.leave');
+    Route::post('meetings/{meeting}/attendance', [MeetingController::class, 'markAttendance'])->name('meetings.attendance');
+    Route::post('meetings/{meeting}/status', [MeetingController::class, 'updateStatus'])->name('meetings.status');
+    Route::post('meetings/{meeting}/notes', [MeetingController::class, 'addNotes'])->name('meetings.notes');
 
     // Reports
     Route::get('reports', [DashboardController::class, 'reports'])->name('reports.index');

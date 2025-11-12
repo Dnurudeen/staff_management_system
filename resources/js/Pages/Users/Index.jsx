@@ -258,23 +258,21 @@ export default function Index({ auth, users, filters }) {
                 title="Delete User"
                 maxWidth="md"
             >
-                <div className="space-y-4">
-                    <p className="text-sm text-gray-600">
-                        Are you sure you want to delete{" "}
-                        <strong>{userToDelete?.name}</strong>? This action
-                        cannot be undone.
-                    </p>
-                    <div className="flex justify-end space-x-2">
-                        <Button
-                            variant="ghost"
-                            onClick={() => setShowDeleteModal(false)}
-                        >
-                            Cancel
-                        </Button>
-                        <Button variant="danger" onClick={confirmDelete}>
-                            Delete
-                        </Button>
-                    </div>
+                <p className="text-sm text-gray-600">
+                    Are you sure you want to delete{" "}
+                    <strong>{userToDelete?.name}</strong>? This action cannot be
+                    undone.
+                </p>
+                <div className="flex justify-end space-x-2 mt-6">
+                    <Button
+                        variant="ghost"
+                        onClick={() => setShowDeleteModal(false)}
+                    >
+                        Cancel
+                    </Button>
+                    <Button variant="danger" onClick={confirmDelete}>
+                        Delete
+                    </Button>
                 </div>
             </Modal>
 

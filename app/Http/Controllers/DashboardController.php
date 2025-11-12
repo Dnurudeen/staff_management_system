@@ -146,7 +146,7 @@ class DashboardController extends Controller
             });
 
         // Get meetings
-        $meetings = \App\Models\Meeting::with('organizer', 'participants')
+        $meetings = \App\Models\Meeting::with('creator', 'participants')
             ->where('scheduled_at', '>=', now()->subMonths(1))
             ->get()
             ->map(function ($item) {
