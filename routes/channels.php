@@ -7,6 +7,11 @@ Broadcast::channel('App.Models.User.{id}', function ($user, $id) {
     return (int) $user->id === (int) $id;
 });
 
+// User notification channel
+Broadcast::channel('users.{userId}', function ($user, $userId) {
+    return (int) $user->id === (int) $userId;
+});
+
 // Private conversation channel
 Broadcast::channel('conversation.{conversationId}', function ($user, $conversationId) {
     $conversation = Conversation::find($conversationId);

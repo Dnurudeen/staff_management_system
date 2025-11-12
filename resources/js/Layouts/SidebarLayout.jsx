@@ -1,9 +1,10 @@
 import ApplicationLogo from "@/Components/ApplicationLogo";
 import Dropdown from "@/Components/Dropdown";
 import Sidebar from "@/Components/Sidebar";
+import NotificationBell from "@/Components/NotificationBell";
 import { usePage } from "@inertiajs/react";
 import { useState } from "react";
-import { Bars3Icon, BellIcon } from "@heroicons/react/24/outline";
+import { Bars3Icon } from "@heroicons/react/24/outline";
 
 export default function SidebarLayout({ header, children }) {
     const { auth } = usePage().props;
@@ -63,17 +64,7 @@ export default function SidebarLayout({ header, children }) {
                         {/* Right side actions */}
                         <div className="flex items-center space-x-4">
                             {/* Notifications */}
-                            <button
-                                type="button"
-                                className="relative rounded-full bg-white p-1 text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-                            >
-                                <span className="sr-only">
-                                    View notifications
-                                </span>
-                                <BellIcon className="h-6 w-6" />
-                                {/* Notification badge */}
-                                <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-500 ring-2 ring-white" />
-                            </button>
+                            <NotificationBell />
 
                             {/* User Menu */}
                             <Dropdown>

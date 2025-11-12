@@ -151,4 +151,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(Meeting::class, 'created_by');
     }
+
+    public function notifications(): HasMany
+    {
+        return $this->hasMany(Notification::class);
+    }
 }

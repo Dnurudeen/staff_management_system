@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Meeting;
 use App\Models\User;
+use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
@@ -82,6 +83,17 @@ class MeetingController extends Controller
                     'role' => 'participant',
                     'rsvp_status' => 'pending',
                 ]);
+
+                // Send notification to participant
+                $participant = User::find($participantId);
+                if ($participant) {
+                    NotificationService::meeting(
+                        $participant,
+                        'New Meeting Invitation',
+                        Auth::user()->name . ' invited you to "' . $meeting->title . '" scheduled for ' . $meeting->scheduled_at->format('M d, Y g:i A'),
+                        $meeting->id
+                    );
+                }
             }
         }
 

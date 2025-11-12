@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\LeaveRequest;
 use App\Models\User;
+use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
@@ -195,6 +196,14 @@ class LeaveRequestController extends Controller
             'admin_notes' => $validated['admin_notes'] ?? null,
         ]);
 
+        // Send notification to user
+        NotificationService::leave(
+            $leaveRequest->user,
+            'Leave Request Approved',
+            'Your leave request from ' . $leaveRequest->start_date->format('M d') . ' to ' . $leaveRequest->end_date->format('M d, Y') . ' has been approved.',
+            $leaveRequest->id
+        );
+
         return back()->with('success', 'Leave request approved successfully.');
     }
 
@@ -222,6 +231,14 @@ class LeaveRequestController extends Controller
             'approved_at' => now(),
             'admin_notes' => $validated['admin_notes'],
         ]);
+
+        // Send notification to user
+        NotificationService::leave(
+            $leaveRequest->user,
+            'Leave Request Rejected',
+            'Your leave request from ' . $leaveRequest->start_date->format('M d') . ' to ' . $leaveRequest->end_date->format('M d, Y') . ' has been rejected.',
+            $leaveRequest->id
+        );
 
         return back()->with('success', 'Leave request rejected.');
     }
