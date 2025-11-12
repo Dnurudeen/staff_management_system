@@ -8,6 +8,10 @@ import { PlusIcon, PencilIcon, TrashIcon } from "@heroicons/react/24/outline";
 export default function Index({ auth, tasks }) {
     const [updatingStatus, setUpdatingStatus] = useState(null);
 
+    // Debug: Log the tasks prop to see what we're receiving
+    console.log("Tasks prop:", tasks);
+    console.log("Tasks data:", tasks?.data);
+
     const handleStatusUpdate = (taskId, newStatus) => {
         setUpdatingStatus(taskId);
         router.post(
@@ -35,7 +39,7 @@ export default function Index({ auth, tasks }) {
             key: "title",
             label: "Title",
             sortable: true,
-            render: (task) => (
+            render: (value, task) => (
                 <div>
                     <div className="font-medium text-gray-900">
                         {task.title}
@@ -52,26 +56,34 @@ export default function Index({ auth, tasks }) {
         {
             key: "priority",
             label: "Priority",
-            render: (task) => (
-                <span
-                    className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                        task.priority === "urgent"
-                            ? "bg-red-100 text-red-800"
-                            : task.priority === "high"
-                            ? "bg-orange-100 text-orange-800"
-                            : task.priority === "medium"
-                            ? "bg-yellow-100 text-yellow-800"
-                            : "bg-green-100 text-green-800"
-                    }`}
-                >
-                    {task.priority.toUpperCase()}
-                </span>
-            ),
+            render: (value, task) => {
+                if (!task.priority)
+                    return <span className="text-gray-400">-</span>;
+
+                return (
+                    <span
+                        className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                            task.priority === "urgent"
+                                ? "bg-red-100 text-red-800"
+                                : task.priority === "high"
+                                ? "bg-orange-100 text-orange-800"
+                                : task.priority === "medium"
+                                ? "bg-yellow-100 text-yellow-800"
+                                : "bg-green-100 text-green-800"
+                        }`}
+                    >
+                        {task.priority.toUpperCase()}
+                    </span>
+                );
+            },
         },
         {
             key: "status",
             label: "Status",
-            render: (task) => {
+            render: (value, task) => {
+                if (!task.status)
+                    return <span className="text-gray-400">-</span>;
+
                 const colors = {
                     pending: "bg-gray-100 text-gray-800",
                     in_progress: "bg-blue-100 text-blue-800",
@@ -100,7 +112,8 @@ export default function Index({ auth, tasks }) {
                             }}
                             disabled={updatingStatus === task.id}
                             className={`px-2 py-1 text-xs font-semibold rounded border-0 focus:ring-2 focus:ring-indigo-500 ${
-                                colors[task.status]
+                                colors[task.status] ||
+                                "bg-gray-100 text-gray-800"
                             } ${
                                 updatingStatus === task.id
                                     ? "opacity-50 cursor-not-allowed"
@@ -119,10 +132,10 @@ export default function Index({ auth, tasks }) {
                 return (
                     <span
                         className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                            colors[task.status]
+                            colors[task.status] || "bg-gray-100 text-gray-800"
                         }`}
                     >
-                        {statusLabels[task.status] || task.status}
+                        {statusLabels[task.status] || task.status || "N/A"}
                     </span>
                 );
             },
@@ -130,13 +143,13 @@ export default function Index({ auth, tasks }) {
         {
             key: "assigned_user",
             label: "Assigned To",
-            render: (task) =>
+            render: (value, task) =>
                 task.assigned_user ? task.assigned_user.name : "-",
         },
         {
             key: "due_date",
             label: "Due Date",
-            render: (task) => {
+            render: (value, task) => {
                 if (!task.due_date) return "-";
 
                 const dueDate = new Date(task.due_date);
@@ -160,7 +173,7 @@ export default function Index({ auth, tasks }) {
         {
             key: "actions",
             label: "Actions",
-            render: (task) => (
+            render: (value, task) => (
                 <div className="flex items-center space-x-2">
                     <Link
                         href={route("tasks.edit", task.id)}
@@ -221,11 +234,17 @@ export default function Index({ auth, tasks }) {
                     )}
 
                     <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
-                        <DataTable
-                            columns={columns}
-                            data={tasks.data}
-                            pagination={tasks}
-                        />
+                        {!tasks || !tasks.data || tasks.data.length === 0 ? (
+                            <div className="text-center py-8 text-gray-500">
+                                <p>No tasks found</p>
+                            </div>
+                        ) : (
+                            <DataTable
+                                columns={columns}
+                                data={tasks.data}
+                                pagination={tasks}
+                            />
+                        )}
                     </div>
                 </div>
             </div>

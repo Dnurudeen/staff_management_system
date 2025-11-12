@@ -21,7 +21,8 @@ class MessageController extends Controller
         $validated = $request->validate([
             'type' => 'required|in:text,voice,file,image,video',
             'content' => 'required_if:type,text|nullable|string|max:5000',
-            'file' => 'required_unless:type,text|file|max:10240',
+            'file' => 'required_if:type,voice,file,image,video|file|max:10240',
+            'voice_duration' => 'nullable|numeric',
             'reply_to' => 'nullable|exists:messages,id',
         ]);
 
@@ -45,7 +46,7 @@ class MessageController extends Controller
 
             // For voice messages, store duration if provided
             if ($validated['type'] === 'voice' && $request->has('voice_duration')) {
-                $messageData['voice_duration'] = $request->voice_duration;
+                $messageData['voice_duration'] = $request->input('voice_duration');
             }
         }
 

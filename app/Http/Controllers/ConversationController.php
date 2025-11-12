@@ -16,7 +16,17 @@ class ConversationController extends Controller
             ->latest('last_message_at')
             ->get();
 
-        return Inertia::render('Chat/Index', ['conversations' => $conversations]);
+        // Get all users except current user for creating new conversations
+        $users = User::where('id', '!=', auth()->id())
+            ->select('id', 'name', 'email', 'avatar', 'role', 'department_id')
+            ->with('department:id,name')
+            ->orderBy('name')
+            ->get();
+
+        return Inertia::render('Chat/Index', [
+            'conversations' => $conversations,
+            'users' => $users,
+        ]);
     }
 
     public function createPrivate(Request $request)
@@ -87,8 +97,29 @@ class ConversationController extends Controller
             abort(403, 'Unauthorized');
         }
 
-        $conversation->load(['participants', 'messages.user', 'messages.reads']);
-        return response()->json(['conversation' => $conversation]);
+        $conversations = auth()->user()->conversations()
+            ->with(['participants', 'lastMessage.user'])
+            ->latest('last_message_at')
+            ->get();
+
+        $messages = $conversation->messages()
+            ->with(['user', 'reads'])
+            ->orderBy('created_at', 'asc')
+            ->get();
+
+        // Get all users except current user for creating new conversations
+        $users = User::where('id', '!=', auth()->id())
+            ->select('id', 'name', 'email', 'avatar', 'role', 'department_id')
+            ->with('department:id,name')
+            ->orderBy('name')
+            ->get();
+
+        return Inertia::render('Chat/Index', [
+            'conversations' => $conversations,
+            'activeConversation' => $conversation->load('participants'),
+            'messages' => $messages,
+            'users' => $users,
+        ]);
     }
 
     public function toggleMute(Conversation $conversation)
