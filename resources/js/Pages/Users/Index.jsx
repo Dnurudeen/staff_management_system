@@ -224,7 +224,7 @@ export default function Index({ auth, users, filters }) {
                             onClick={() => router.visit(route("users.create"))}
                         >
                             <PlusIcon className="h-5 w-5 mr-2" />
-                            Add User
+                            Invite User
                         </Button>
                     </div>
                 </div>

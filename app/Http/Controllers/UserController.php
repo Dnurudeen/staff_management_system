@@ -4,9 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Models\Department;
+use App\Models\UserInvitation;
+use App\Mail\InviteUserMail;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
@@ -61,7 +65,7 @@ class UserController extends Controller
     {
         $departments = Department::where('status', 'active')->get();
 
-        return Inertia::render('Users/Create', [
+        return Inertia::render('Users/CreateEdit', [
             'departments' => $departments
         ]);
     }
@@ -72,33 +76,45 @@ class UserController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email',
-            'password' => 'required|string|min:8|confirmed',
+            'email' => 'required|email|unique:users,email|unique:user_invitations,email',
             'role' => ['required', Rule::in(['prime_admin', 'admin', 'staff'])],
-            'status' => ['required', Rule::in(['active', 'inactive', 'suspended'])],
             'department_id' => 'nullable|exists:departments,id',
-            'phone' => 'nullable|string|max:20',
-            'bio' => 'nullable|string|max:500',
-            'avatar' => 'nullable|image|max:2048',
         ]);
 
-        // Check permission - only prime_admin can create prime_admin/admin
-        if (in_array($validated['role'], ['prime_admin', 'admin']) && !auth()->user()->isPrimeAdmin()) {
-            abort(403, 'Only Prime Admin can create Admin users.');
+        // Check permission - only prime_admin can invite prime_admin/admin
+        if (in_array($validated['role'], ['prime_admin', 'admin']) && !Auth::user()->isPrimeAdmin()) {
+            abort(403, 'Only Prime Admin can invite Admin users.');
         }
 
-        // Handle avatar upload
-        if ($request->hasFile('avatar')) {
-            $validated['avatar'] = $request->file('avatar')->store('avatars', 'public');
+        // Create invitation
+        $invitation = UserInvitation::create([
+            'email' => $validated['email'],
+            'role' => $validated['role'],
+            'department_id' => $validated['department_id'] ?? null,
+            'invited_by' => Auth::id(),
+            'token' => UserInvitation::generateToken(),
+            'expires_at' => now()->addDays(7), // Link expires in 7 days
+        ]);
+
+        // Load relationships needed for email
+        $invitation->load(['inviter', 'department']);
+
+        // Generate onboarding URL
+        $onboardingUrl = route('onboarding.show', ['token' => $invitation->token]);
+
+        // Send invitation email
+        try {
+            Mail::to($invitation->email)->send(new InviteUserMail($invitation, $onboardingUrl));
+
+            return redirect()->route('users.index')
+                ->with('success', 'Invitation sent successfully to ' . $invitation->email);
+        } catch (\Exception $e) {
+            // If email fails, delete the invitation and show error
+            $invitation->delete();
+
+            return redirect()->route('users.index')
+                ->with('error', 'Failed to send invitation email. Please check your mail configuration. Error: ' . $e->getMessage());
         }
-
-        $validated['password'] = Hash::make($validated['password']);
-
-        $user = User::create($validated);
-
-        return redirect()->route('users.index')
-            ->with('success', 'User created successfully.');
     }
 
     /**
@@ -125,7 +141,7 @@ class UserController extends Controller
     public function edit(User $user)
     {
         // Check permission
-        if ($user->isPrimeAdmin() && !auth()->user()->isPrimeAdmin()) {
+        if ($user->isPrimeAdmin() && !Auth::user()->isPrimeAdmin()) {
             abort(403, 'Cannot edit Prime Admin.');
         }
 
@@ -143,7 +159,7 @@ class UserController extends Controller
     public function update(Request $request, User $user)
     {
         // Check permission
-        if ($user->isPrimeAdmin() && !auth()->user()->isPrimeAdmin()) {
+        if ($user->isPrimeAdmin() && !Auth::user()->isPrimeAdmin()) {
             abort(403, 'Cannot edit Prime Admin.');
         }
 
@@ -160,7 +176,7 @@ class UserController extends Controller
         ]);
 
         // Check permission for role change
-        if ($validated['role'] !== $user->role && !auth()->user()->isPrimeAdmin()) {
+        if ($validated['role'] !== $user->role && !Auth::user()->isPrimeAdmin()) {
             abort(403, 'Only Prime Admin can change user roles.');
         }
 
@@ -197,7 +213,7 @@ class UserController extends Controller
         }
 
         // Check permission
-        if ($user->isAdmin() && !auth()->user()->isPrimeAdmin()) {
+        if ($user->isAdmin() && !Auth::user()->isPrimeAdmin()) {
             abort(403, 'Only Prime Admin can delete Admin users.');
         }
 
@@ -222,7 +238,7 @@ class UserController extends Controller
             'custom_status' => 'nullable|string|max:100',
         ]);
 
-        auth()->user()->update($validated);
+        Auth::user()->update($validated);
 
         return response()->json(['success' => true]);
     }

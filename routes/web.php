@@ -12,6 +12,7 @@ use App\Http\Controllers\MessageController;
 use App\Http\Controllers\MeetingController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\OnboardingController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -24,6 +25,10 @@ Route::get('/', function () {
         'phpVersion' => PHP_VERSION,
     ]);
 });
+
+// Onboarding routes (guest accessible)
+Route::get('/onboarding/{token}', [OnboardingController::class, 'show'])->name('onboarding.show');
+Route::post('/onboarding/{token}', [OnboardingController::class, 'complete'])->name('onboarding.complete');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     // Dashboard
