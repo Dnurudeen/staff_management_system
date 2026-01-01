@@ -40,6 +40,9 @@ class User extends Authenticatable
         'custom_status',
         'last_seen_at',
         'is_online',
+        'google_access_token',
+        'google_refresh_token',
+        'google_token_expires_at',
     ];
 
     /**
@@ -50,6 +53,8 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
         'remember_token',
+        'google_access_token',
+        'google_refresh_token',
     ];
 
     /**
@@ -65,6 +70,7 @@ class User extends Authenticatable
             'last_seen_at' => 'datetime',
             'date_of_birth' => 'date',
             'is_online' => 'boolean',
+            'google_token_expires_at' => 'datetime',
         ];
     }
 
@@ -162,5 +168,24 @@ class User extends Authenticatable
     public function notifications(): HasMany
     {
         return $this->hasMany(Notification::class);
+    }
+
+    /**
+     * Check if user has connected their Google account
+     */
+    public function hasGoogleConnected(): bool
+    {
+        return !empty($this->google_refresh_token);
+    }
+
+    /**
+     * Check if Google access token is expired
+     */
+    public function isGoogleTokenExpired(): bool
+    {
+        if (!$this->google_token_expires_at) {
+            return true;
+        }
+        return $this->google_token_expires_at->isPast();
     }
 }

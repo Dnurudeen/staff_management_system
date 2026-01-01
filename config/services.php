@@ -35,4 +35,11 @@ return [
         ],
     ],
 
+    'google' => [
+        'app_name' => env('GOOGLE_APP_NAME', 'Staff Management System'),
+        'credentials_path' => env('GOOGLE_CREDENTIALS_PATH', storage_path('app/google-credentials.json')),
+        'calendar_id' => env('GOOGLE_CALENDAR_ID', 'primary'),
+        'redirect_uri' => env('GOOGLE_REDIRECT_URI', env('APP_URL') . '/google/callback'),
+    ],
+
 ];

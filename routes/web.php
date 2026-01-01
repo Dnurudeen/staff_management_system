@@ -13,6 +13,7 @@ use App\Http\Controllers\MeetingController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OnboardingController;
+use App\Http\Controllers\GoogleController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -103,6 +104,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('meetings/{meeting}/attendance', [MeetingController::class, 'markAttendance'])->name('meetings.attendance');
     Route::post('meetings/{meeting}/status', [MeetingController::class, 'updateStatus'])->name('meetings.status');
     Route::post('meetings/{meeting}/notes', [MeetingController::class, 'addNotes'])->name('meetings.notes');
+
+    // Google Calendar Integration
+    Route::prefix('google')->group(function () {
+        Route::get('/redirect', [GoogleController::class, 'redirect'])->name('google.redirect');
+        Route::get('/callback', [GoogleController::class, 'callback'])->name('google.callback');
+        Route::post('/disconnect', [GoogleController::class, 'disconnect'])->name('google.disconnect');
+        Route::get('/status', [GoogleController::class, 'status'])->name('google.status');
+    });
 
     // Reports
     Route::get('reports', [DashboardController::class, 'reports'])->name('reports.index');

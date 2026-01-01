@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Meeting;
 use App\Models\User;
+use App\Services\GoogleCalendarService;
 use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -29,9 +30,16 @@ class MeetingController extends Controller
             ->orderBy('name')
             ->get();
 
+        // Check Google Calendar connection status
+        $googleService = new GoogleCalendarService();
+        $googleConnected = Auth::user()->hasGoogleConnected();
+        $googleConfigured = $googleService->hasCredentials();
+
         return Inertia::render('Meetings/Index', [
             'meetings' => $meetings,
             'users' => $users,
+            'googleConnected' => $googleConnected,
+            'googleConfigured' => $googleConfigured,
         ]);
     }
 
@@ -55,7 +63,8 @@ class MeetingController extends Controller
             'recurrence_end_date' => 'nullable|date|after:scheduled_at',
         ]);
 
-        $meeting = Meeting::create([
+        // Prepare meeting data
+        $meetingData = [
             'title' => $validated['title'],
             'description' => $validated['description'] ?? null,
             'agenda' => $validated['agenda'] ?? null,
@@ -68,7 +77,38 @@ class MeetingController extends Controller
             'status' => 'scheduled',
             'recurrence' => $validated['recurrence'] ?? 'none',
             'recurrence_end_date' => $validated['recurrence_end_date'] ?? null,
-        ]);
+        ];
+
+        // Generate Google Meet link for video/audio meetings
+        if (in_array($validated['type'], ['video', 'audio']) && empty($validated['meeting_link'])) {
+            $googleCalendarService = new GoogleCalendarService(Auth::user());
+
+            if ($googleCalendarService->isConfigured()) {
+                // Get participant emails for Google Calendar invite
+                $participantEmails = User::whereIn('id', $validated['participant_ids'])
+                    ->pluck('email')
+                    ->toArray();
+
+                // Add creator's email
+                $participantEmails[] = Auth::user()->email;
+
+                $googleMeeting = $googleCalendarService->createMeetingWithGoogleMeet(
+                    $validated['title'],
+                    $validated['description'] ?? null,
+                    new \DateTime($validated['scheduled_at']),
+                    $validated['duration'],
+                    array_unique($participantEmails)
+                );
+
+                if ($googleMeeting) {
+                    $meetingData['meeting_link'] = $googleMeeting['meet_link'];
+                    $meetingData['google_event_id'] = $googleMeeting['event_id'];
+                    $meetingData['google_calendar_link'] = $googleMeeting['calendar_link'];
+                }
+            }
+        }
+
+        $meeting = Meeting::create($meetingData);
 
         // Add creator as a participant with host role
         $meeting->participants()->attach(Auth::id(), [
@@ -142,7 +182,7 @@ class MeetingController extends Controller
             'recurrence_end_date' => 'nullable|date|after:scheduled_at',
         ]);
 
-        $meeting->update([
+        $meetingData = [
             'title' => $validated['title'],
             'description' => $validated['description'] ?? null,
             'agenda' => $validated['agenda'] ?? null,
@@ -153,7 +193,60 @@ class MeetingController extends Controller
             'meeting_link' => $validated['meeting_link'] ?? null,
             'recurrence' => $validated['recurrence'] ?? 'none',
             'recurrence_end_date' => $validated['recurrence_end_date'] ?? null,
-        ]);
+        ];
+
+        // Update Google Calendar event if exists
+        if ($meeting->google_event_id && in_array($validated['type'], ['video', 'audio'])) {
+            $googleCalendarService = new GoogleCalendarService(Auth::user());
+
+            if ($googleCalendarService->isConfigured()) {
+                $participantEmails = User::whereIn('id', $validated['participant_ids'])
+                    ->pluck('email')
+                    ->toArray();
+                $participantEmails[] = Auth::user()->email;
+
+                $googleMeeting = $googleCalendarService->updateMeeting(
+                    $meeting->google_event_id,
+                    $validated['title'],
+                    $validated['description'] ?? null,
+                    new \DateTime($validated['scheduled_at']),
+                    $validated['duration'],
+                    array_unique($participantEmails)
+                );
+
+                if ($googleMeeting) {
+                    $meetingData['meeting_link'] = $googleMeeting['meet_link'];
+                    $meetingData['google_calendar_link'] = $googleMeeting['calendar_link'];
+                }
+            }
+        }
+        // Create new Google Meet if type changed to video/audio and no link exists
+        elseif (in_array($validated['type'], ['video', 'audio']) && empty($validated['meeting_link']) && !$meeting->google_event_id) {
+            $googleCalendarService = new GoogleCalendarService(Auth::user());
+
+            if ($googleCalendarService->isConfigured()) {
+                $participantEmails = User::whereIn('id', $validated['participant_ids'])
+                    ->pluck('email')
+                    ->toArray();
+                $participantEmails[] = Auth::user()->email;
+
+                $googleMeeting = $googleCalendarService->createMeetingWithGoogleMeet(
+                    $validated['title'],
+                    $validated['description'] ?? null,
+                    new \DateTime($validated['scheduled_at']),
+                    $validated['duration'],
+                    array_unique($participantEmails)
+                );
+
+                if ($googleMeeting) {
+                    $meetingData['meeting_link'] = $googleMeeting['meet_link'];
+                    $meetingData['google_event_id'] = $googleMeeting['event_id'];
+                    $meetingData['google_calendar_link'] = $googleMeeting['calendar_link'];
+                }
+            }
+        }
+
+        $meeting->update($meetingData);
 
         // Sync participants (preserve host)
         $participantsData = [Auth::id() => ['role' => 'host', 'rsvp_status' => 'accepted']];
@@ -184,6 +277,14 @@ class MeetingController extends Controller
         // Only creator can delete
         if ($meeting->created_by !== Auth::id()) {
             abort(403, 'Unauthorized');
+        }
+
+        // Delete Google Calendar event if exists
+        if ($meeting->google_event_id) {
+            $googleCalendarService = new GoogleCalendarService(Auth::user());
+            if ($googleCalendarService->isConfigured()) {
+                $googleCalendarService->deleteMeeting($meeting->google_event_id);
+            }
         }
 
         $meeting->delete();

@@ -18,6 +18,8 @@ class Meeting extends Model
         'duration',
         'location',
         'meeting_link',
+        'google_event_id',
+        'google_calendar_link',
         'status',
         'recurrence',
         'recurrence_end_date',
