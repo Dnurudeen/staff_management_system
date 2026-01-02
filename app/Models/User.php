@@ -43,6 +43,9 @@ class User extends Authenticatable
         'google_access_token',
         'google_refresh_token',
         'google_token_expires_at',
+        'subscription_plan',
+        'subscription_expires_at',
+        'is_paid',
     ];
 
     /**
@@ -70,7 +73,9 @@ class User extends Authenticatable
             'last_seen_at' => 'datetime',
             'date_of_birth' => 'date',
             'is_online' => 'boolean',
+            'is_paid' => 'boolean',
             'google_token_expires_at' => 'datetime',
+            'subscription_expires_at' => 'datetime',
         ];
     }
 

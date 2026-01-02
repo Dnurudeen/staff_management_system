@@ -14,6 +14,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\GoogleController;
+use App\Http\Controllers\PaymentController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -30,6 +31,19 @@ Route::get('/', function () {
 // Onboarding routes (guest accessible)
 Route::get('/onboarding/{token}', [OnboardingController::class, 'show'])->name('onboarding.show');
 Route::post('/onboarding/{token}', [OnboardingController::class, 'complete'])->name('onboarding.complete');
+
+// Payment routes (guest accessible)
+Route::prefix('payment')->group(function () {
+    Route::get('/plans', [PaymentController::class, 'getPlans'])->name('payment.plans');
+    Route::post('/paystack/initialize', [PaymentController::class, 'initializePaystack'])->name('payment.paystack.initialize');
+    Route::get('/paystack/callback', [PaymentController::class, 'paystackCallback'])->name('payment.paystack.callback');
+    Route::post('/flutterwave/initialize', [PaymentController::class, 'initializeFlutterwave'])->name('payment.flutterwave.initialize');
+    Route::get('/flutterwave/callback', [PaymentController::class, 'flutterwaveCallback'])->name('payment.flutterwave.callback');
+});
+
+// Payment webhooks (no CSRF)
+Route::post('/webhook/paystack', [PaymentController::class, 'paystackWebhook'])->name('webhook.paystack');
+Route::post('/webhook/flutterwave', [PaymentController::class, 'flutterwaveWebhook'])->name('webhook.flutterwave');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     // Dashboard
