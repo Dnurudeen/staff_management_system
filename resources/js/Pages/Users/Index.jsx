@@ -14,6 +14,7 @@ import {
     ExclamationTriangleIcon,
     UserGroupIcon,
     ChartBarIcon,
+    EnvelopeIcon,
 } from "@heroicons/react/24/outline";
 
 export default function Index({ auth, users, filters, organizationStats }) {
@@ -232,6 +233,15 @@ export default function Index({ auth, users, filters, organizationStats }) {
                         User Management
                     </h2>
                     <div className="flex space-x-2">
+                        <Button
+                            variant="outline"
+                            onClick={() =>
+                                router.visit(route("invitations.index"))
+                            }
+                        >
+                            <EnvelopeIcon className="h-5 w-5 mr-2" />
+                            Invitations
+                        </Button>
                         <Button variant="outline" onClick={handleExport}>
                             <ArrowDownTrayIcon className="h-5 w-5 mr-2" />
                             Export

@@ -160,14 +160,17 @@ class UserController extends Controller
         try {
             Mail::to($invitation->email)->send(new InviteUserMail($invitation, $onboardingUrl));
 
-            return redirect()->route('users.index')
-                ->with('success', 'Invitation sent successfully to ' . $invitation->email);
+            return redirect()->route('users.create')
+                ->with('success', 'Invitation sent successfully to ' . $invitation->email)
+                ->with('invited_email', $invitation->email);
         } catch (\Exception $e) {
             // If email fails, delete the invitation and show error
             $invitation->delete();
 
-            return redirect()->route('users.index')
-                ->with('error', 'Failed to send invitation email. Please check your mail configuration. Error: ' . $e->getMessage());
+            return redirect()->route('users.create')
+                ->with('error', 'Failed to send invitation email. Please check your mail configuration.')
+                ->with('error_details', $e->getMessage())
+                ->with('invited_email', $request->email);
         }
     }
 

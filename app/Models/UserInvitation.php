@@ -17,6 +17,7 @@ class UserInvitation extends Model
         'organization_id',
         'invited_by',
         'token',
+        'status',
         'expires_at',
         'accepted_at',
         'user_id',
@@ -97,8 +98,19 @@ class UserInvitation extends Model
     public function markAsAccepted(User $user)
     {
         $this->update([
+            'status' => 'accepted',
             'accepted_at' => now(),
             'user_id' => $user->id,
+        ]);
+    }
+
+    /**
+     * Mark the invitation as cancelled
+     */
+    public function markAsCancelled()
+    {
+        $this->update([
+            'status' => 'cancelled',
         ]);
     }
 }

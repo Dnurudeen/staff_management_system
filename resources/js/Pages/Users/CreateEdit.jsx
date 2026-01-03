@@ -1,14 +1,27 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
-import { Head, useForm } from "@inertiajs/react";
+import { Head, useForm, usePage, router } from "@inertiajs/react";
 import Button from "@/Components/Button";
 import FileUpload from "@/Components/FileUpload";
 import Toast from "@/Components/Toast";
 import LoadingSpinner from "@/Components/LoadingSpinner";
+import {
+    CheckCircleIcon,
+    XCircleIcon,
+    ExclamationTriangleIcon,
+    EnvelopeIcon,
+    UserPlusIcon,
+} from "@heroicons/react/24/outline";
 
-export default function CreateEdit({ auth, user, departments }) {
+export default function CreateEdit({
+    auth,
+    user,
+    departments,
+    organizationStats,
+}) {
+    const { flash } = usePage().props;
     const isEdit = !!user;
-    const { data, setData, post, put, processing, errors } = useForm({
+    const { data, setData, post, put, processing, errors, reset } = useForm({
         // For invitation (create mode)
         email: user?.email || "",
         role: user?.role || "staff",
@@ -30,8 +43,57 @@ export default function CreateEdit({ auth, user, departments }) {
         type: "success",
     });
 
+    const [inviteStatus, setInviteStatus] = useState({
+        show: false,
+        success: false,
+        email: "",
+        message: "",
+        details: null,
+    });
+
+    // Handle flash messages from server redirect
+    useEffect(() => {
+        if (flash?.success && flash?.invited_email) {
+            setInviteStatus({
+                show: true,
+                success: true,
+                email: flash.invited_email,
+                message: "Invitation sent successfully!",
+                details: `An invitation email has been sent to ${flash.invited_email}. They will receive a link to complete their onboarding.`,
+            });
+        } else if (flash?.error && flash?.invited_email) {
+            setInviteStatus({
+                show: true,
+                success: false,
+                email: flash.invited_email,
+                message: "Failed to send invitation",
+                details: flash.error_details || flash.error,
+            });
+        }
+    }, [flash]);
+
+    // Check if organization can add more employees
+    const canAddEmployee = organizationStats?.can_add_employee ?? true;
+    const remainingSlots = organizationStats?.remaining_slots ?? -1;
+
     const handleSubmit = (e) => {
         e.preventDefault();
+
+        // Check employee limit before submitting invitation
+        if (!isEdit && !canAddEmployee) {
+            setInviteStatus({
+                show: true,
+                success: false,
+                email: data.email,
+                message: "Employee limit reached",
+                details: `Your ${
+                    organizationStats?.plan_name || "current"
+                } plan allows a maximum of ${
+                    organizationStats?.max_employees
+                } employees. Please upgrade your plan to add more team members.`,
+            });
+            return;
+        }
 
         if (isEdit) {
             const formData = new FormData();
@@ -52,33 +114,85 @@ export default function CreateEdit({ auth, user, departments }) {
                         type: "success",
                     });
                 },
-                onError: () => {
+                onError: (errors) => {
+                    const errorMessage =
+                        Object.values(errors)[0] || "Failed to update user!";
                     setToast({
                         show: true,
-                        message: "Failed to update user!",
+                        message: errorMessage,
                         type: "error",
                     });
                 },
             });
         } else {
             // Invitation mode - only send email, role, and department_id
+            const invitedEmail = data.email;
+
             post(route("users.store"), {
-                onSuccess: () => {
-                    setToast({
+                onSuccess: (page) => {
+                    // Show success status
+                    setInviteStatus({
                         show: true,
+                        success: true,
+                        email: invitedEmail,
                         message: "Invitation sent successfully!",
-                        type: "success",
+                        details: `An invitation email has been sent to ${invitedEmail}. They will receive a link to complete their onboarding.`,
                     });
+                    // Reset form
+                    reset();
                 },
-                onError: () => {
-                    setToast({
+                onError: (errors) => {
+                    // Determine error type and show appropriate message
+                    let errorMessage = "Failed to send invitation";
+                    let errorDetails =
+                        "An unexpected error occurred. Please try again.";
+
+                    if (errors.email) {
+                        if (
+                            errors.email.includes("taken") ||
+                            errors.email.includes("unique")
+                        ) {
+                            errorMessage = "Email already registered";
+                            errorDetails = `The email address ${invitedEmail} is already associated with an existing user or pending invitation.`;
+                        } else {
+                            errorMessage = "Invalid email address";
+                            errorDetails = errors.email;
+                        }
+                    } else if (errors.organization) {
+                        errorMessage = "Organization limit reached";
+                        errorDetails = errors.organization;
+                    } else if (errors.role) {
+                        errorMessage = "Invalid role selection";
+                        errorDetails = errors.role;
+                    } else if (Object.keys(errors).length > 0) {
+                        errorDetails = Object.values(errors).join(". ");
+                    }
+
+                    setInviteStatus({
                         show: true,
-                        message: "Failed to send invitation!",
-                        type: "error",
+                        success: false,
+                        email: invitedEmail,
+                        message: errorMessage,
+                        details: errorDetails,
                     });
                 },
             });
         }
+    };
+
+    const handleInviteAnother = () => {
+        setInviteStatus({
+            show: false,
+            success: false,
+            email: "",
+            message: "",
+            details: null,
+        });
+        reset();
+    };
+
+    const handleGoToUsers = () => {
+        router.visit(route("users.index"));
     };
 
     return (
@@ -95,15 +209,216 @@ export default function CreateEdit({ auth, user, departments }) {
             <div className="py-12">
                 <div className="max-w-3xl mx-auto sm:px-6 lg:px-8">
                     <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
-                        {processing ? (
+                        {/* Invitation Status Card */}
+                        {!isEdit && inviteStatus.show ? (
+                            <div className="text-center py-8">
+                                {inviteStatus.success ? (
+                                    <>
+                                        <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100 mb-6">
+                                            <CheckCircleIcon className="h-10 w-10 text-green-600" />
+                                        </div>
+                                        <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                                            {inviteStatus.message}
+                                        </h3>
+                                        <p className="text-gray-600 mb-6 max-w-md mx-auto">
+                                            {inviteStatus.details}
+                                        </p>
+                                        <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6 max-w-md mx-auto">
+                                            <div className="flex items-center justify-center space-x-2">
+                                                <EnvelopeIcon className="h-5 w-5 text-green-600" />
+                                                <span className="text-green-800 font-medium">
+                                                    {inviteStatus.email}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center justify-center space-x-4">
+                                            <Button
+                                                variant="outline"
+                                                onClick={handleGoToUsers}
+                                            >
+                                                Back to Users
+                                            </Button>
+                                            <Button
+                                                variant="outline"
+                                                onClick={() =>
+                                                    router.visit(
+                                                        route(
+                                                            "invitations.index"
+                                                        )
+                                                    )
+                                                }
+                                            >
+                                                <EnvelopeIcon className="h-5 w-5 mr-2" />
+                                                View Invitations
+                                            </Button>
+                                            <Button
+                                                onClick={handleInviteAnother}
+                                            >
+                                                <UserPlusIcon className="h-5 w-5 mr-2" />
+                                                Invite Another User
+                                            </Button>
+                                        </div>
+                                        {remainingSlots !== -1 &&
+                                            remainingSlots > 0 && (
+                                                <p className="text-sm text-gray-500 mt-4">
+                                                    You have{" "}
+                                                    {remainingSlots - 1}{" "}
+                                                    employee slot
+                                                    {remainingSlots - 1 !== 1
+                                                        ? "s"
+                                                        : ""}{" "}
+                                                    remaining.
+                                                </p>
+                                            )}
+                                    </>
+                                ) : (
+                                    <>
+                                        <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-red-100 mb-6">
+                                            <XCircleIcon className="h-10 w-10 text-red-600" />
+                                        </div>
+                                        <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                                            {inviteStatus.message}
+                                        </h3>
+                                        <p className="text-gray-600 mb-6 max-w-md mx-auto">
+                                            {inviteStatus.details}
+                                        </p>
+                                        {inviteStatus.email && (
+                                            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6 max-w-md mx-auto">
+                                                <div className="flex items-center justify-center space-x-2">
+                                                    <EnvelopeIcon className="h-5 w-5 text-red-600" />
+                                                    <span className="text-red-800 font-medium">
+                                                        {inviteStatus.email}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        )}
+                                        <div className="flex items-center justify-center space-x-4">
+                                            <Button
+                                                variant="outline"
+                                                onClick={handleGoToUsers}
+                                            >
+                                                Back to Users
+                                            </Button>
+                                            <Button
+                                                onClick={handleInviteAnother}
+                                            >
+                                                Try Again
+                                            </Button>
+                                        </div>
+                                        {inviteStatus.message ===
+                                            "Employee limit reached" && (
+                                            <div className="mt-6">
+                                                <Button
+                                                    variant="primary"
+                                                    onClick={() =>
+                                                        router.visit(
+                                                            route(
+                                                                "billing.index"
+                                                            )
+                                                        )
+                                                    }
+                                                    className="bg-gradient-to-r from-indigo-600 to-purple-600"
+                                                >
+                                                    Upgrade Plan
+                                                </Button>
+                                            </div>
+                                        )}
+                                    </>
+                                )}
+                            </div>
+                        ) : processing ? (
                             <div className="py-12">
-                                <LoadingSpinner size="lg" text="Saving..." />
+                                <LoadingSpinner
+                                    size="lg"
+                                    text="Invitation in process..."
+                                />
                             </div>
                         ) : (
                             <form onSubmit={handleSubmit} className="space-y-6">
                                 {!isEdit ? (
                                     // INVITATION MODE - Simple form
                                     <>
+                                        {/* Employee Limit Warning */}
+                                        {!canAddEmployee && (
+                                            <div className="bg-red-50 border-l-4 border-red-400 p-4">
+                                                <div className="flex">
+                                                    <div className="flex-shrink-0">
+                                                        <XCircleIcon className="h-5 w-5 text-red-400" />
+                                                    </div>
+                                                    <div className="ml-3">
+                                                        <p className="text-sm text-red-700">
+                                                            <strong>
+                                                                Employee limit
+                                                                reached!
+                                                            </strong>{" "}
+                                                            Your{" "}
+                                                            {
+                                                                organizationStats?.plan_name
+                                                            }{" "}
+                                                            plan allows a
+                                                            maximum of{" "}
+                                                            {
+                                                                organizationStats?.max_employees
+                                                            }{" "}
+                                                            employees.
+                                                            <button
+                                                                type="button"
+                                                                onClick={() =>
+                                                                    router.visit(
+                                                                        route(
+                                                                            "billing.index"
+                                                                        )
+                                                                    )
+                                                                }
+                                                                className="underline font-medium hover:text-red-800 ml-1"
+                                                            >
+                                                                Upgrade your
+                                                                plan
+                                                            </button>{" "}
+                                                            to add more team
+                                                            members.
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Low slots warning */}
+                                        {canAddEmployee &&
+                                            remainingSlots !== -1 &&
+                                            remainingSlots <= 3 &&
+                                            remainingSlots > 0 && (
+                                                <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
+                                                    <div className="flex">
+                                                        <div className="flex-shrink-0">
+                                                            <ExclamationTriangleIcon className="h-5 w-5 text-yellow-400" />
+                                                        </div>
+                                                        <div className="ml-3">
+                                                            <p className="text-sm text-yellow-700">
+                                                                <strong>
+                                                                    Running low
+                                                                    on employee
+                                                                    slots!
+                                                                </strong>{" "}
+                                                                You have only{" "}
+                                                                {remainingSlots}{" "}
+                                                                slot
+                                                                {remainingSlots !==
+                                                                1
+                                                                    ? "s"
+                                                                    : ""}{" "}
+                                                                remaining on
+                                                                your{" "}
+                                                                {
+                                                                    organizationStats?.plan_name
+                                                                }{" "}
+                                                                plan.
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
+
                                         <div className="bg-blue-50 border-l-4 border-blue-400 p-4">
                                             <div className="flex">
                                                 <div className="flex-shrink-0">
@@ -544,10 +859,49 @@ export default function CreateEdit({ auth, user, departments }) {
                                     >
                                         Cancel
                                     </Button>
-                                    <Button type="submit" disabled={processing}>
-                                        {isEdit
-                                            ? "Update User"
-                                            : "Send Invitation"}
+                                    <Button
+                                        type="submit"
+                                        disabled={
+                                            processing ||
+                                            (!isEdit && remainingSlots === 0)
+                                        }
+                                        className={
+                                            !isEdit && remainingSlots === 0
+                                                ? "opacity-50 cursor-not-allowed"
+                                                : ""
+                                        }
+                                    >
+                                        {processing ? (
+                                            <>
+                                                <svg
+                                                    className="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline"
+                                                    xmlns="http://www.w3.org/2000/svg"
+                                                    fill="none"
+                                                    viewBox="0 0 24 24"
+                                                >
+                                                    <circle
+                                                        className="opacity-25"
+                                                        cx="12"
+                                                        cy="12"
+                                                        r="10"
+                                                        stroke="currentColor"
+                                                        strokeWidth="4"
+                                                    ></circle>
+                                                    <path
+                                                        className="opacity-75"
+                                                        fill="currentColor"
+                                                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                                    ></path>
+                                                </svg>
+                                                {isEdit
+                                                    ? "Updating..."
+                                                    : "Sending..."}
+                                            </>
+                                        ) : isEdit ? (
+                                            "Update User"
+                                        ) : (
+                                            "Send Invitation"
+                                        )}
                                     </Button>
                                 </div>
                             </form>
