@@ -17,6 +17,10 @@ class Organization extends Model
         'subscription_expires_at',
         'max_employees',
         'features',
+        'work_start_time',
+        'work_end_time',
+        'late_threshold_minutes',
+        'work_days',
         'status',
         'storage_used',
         'storage_limit',
@@ -24,9 +28,11 @@ class Organization extends Model
 
     protected $casts = [
         'features' => 'array',
+        'work_days' => 'array',
         'subscription_expires_at' => 'datetime',
         'storage_used' => 'integer',
         'storage_limit' => 'integer',
+        'late_threshold_minutes' => 'integer',
     ];
 
     /**
@@ -204,5 +210,53 @@ class Organization extends Model
             'storage_limit' => $plan['storage_limit'],
             'features' => $plan['features'],
         ]);
+    }
+
+    /**
+     * Check if a clock-in time is considered late
+     */
+    public function isClockInLate(\DateTime $clockInTime): bool
+    {
+        $workStart = \Carbon\Carbon::parse($this->work_start_time ?? '09:00:00');
+        $clockIn = \Carbon\Carbon::parse($clockInTime);
+
+        // Compare only the time portion
+        $workStartTime = $workStart->format('H:i:s');
+        $clockInTimeStr = $clockIn->format('H:i:s');
+
+        $lateThreshold = $this->late_threshold_minutes ?? 0;
+
+        $workStartWithThreshold = \Carbon\Carbon::parse($workStartTime)->addMinutes($lateThreshold);
+
+        return \Carbon\Carbon::parse($clockInTimeStr)->gt($workStartWithThreshold);
+    }
+
+    /**
+     * Get formatted work start time
+     */
+    public function getFormattedWorkStartTime(): string
+    {
+        return \Carbon\Carbon::parse($this->work_start_time ?? '09:00:00')->format('g:i A');
+    }
+
+    /**
+     * Get formatted work end time
+     */
+    public function getFormattedWorkEndTime(): string
+    {
+        return \Carbon\Carbon::parse($this->work_end_time ?? '17:00:00')->format('g:i A');
+    }
+
+    /**
+     * Check if today is a work day
+     */
+    public function isWorkDay(\DateTime $date = null): bool
+    {
+        $date = $date ?? now();
+        $dayOfWeek = \Carbon\Carbon::parse($date)->dayOfWeekIso; // 1 = Monday, 7 = Sunday
+
+        $workDays = $this->work_days ?? [1, 2, 3, 4, 5]; // Default Mon-Fri
+
+        return in_array($dayOfWeek, $workDays);
     }
 }

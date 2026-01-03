@@ -81,6 +81,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         // Attendance Management
         Route::get('attendance/report', [AttendanceController::class, 'report'])->name('attendance.report');
+
+        // Working Hours Settings (Prime Admin only)
+        Route::post('attendance/working-hours', [AttendanceController::class, 'updateWorkingHours'])->name('attendance.working-hours');
     });
 
     // Attendance
