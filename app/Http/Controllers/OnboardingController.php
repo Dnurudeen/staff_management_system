@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use App\Models\UserInvitation;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Inertia\Inertia;
 
@@ -37,7 +38,7 @@ class OnboardingController extends Controller
         }
 
         return Inertia::render('Onboarding/Complete', [
-            'invitation' => $invitation->load(['department', 'inviter']),
+            'invitation' => $invitation->load(['department', 'inviter', 'organization']),
             'token' => $token
         ]);
     }
@@ -54,6 +55,11 @@ class OnboardingController extends Controller
             return back()->withErrors(['token' => 'Invalid or expired invitation.']);
         }
 
+        // Check if organization can add more employees
+        if ($invitation->organization && !$invitation->organization->canAddEmployee()) {
+            return back()->withErrors(['organization' => 'The organization has reached its maximum employee limit. Please contact the administrator.']);
+        }
+
         $validated = $request->validate([
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
@@ -65,7 +71,7 @@ class OnboardingController extends Controller
             'phone' => 'nullable|string|max:20',
         ]);
 
-        // Create the user
+        // Create the user with organization_id
         $user = User::create([
             'name' => $validated['first_name'] . ' ' . $validated['last_name'],
             'first_name' => $validated['first_name'],
@@ -75,6 +81,7 @@ class OnboardingController extends Controller
             'role' => $invitation->role,
             'status' => 'active',
             'department_id' => $invitation->department_id,
+            'organization_id' => $invitation->organization_id, // Assign to same organization as inviter
             'date_of_birth' => $validated['date_of_birth'],
             'bank_name' => $validated['bank_name'],
             'account_number' => $validated['account_number'],
@@ -86,7 +93,7 @@ class OnboardingController extends Controller
         $invitation->markAsAccepted($user);
 
         // Log the user in
-        auth()->login($user);
+        Auth::login($user);
 
         return redirect()->route('dashboard')->with('success', 'Welcome! Your account has been created successfully.');
     }

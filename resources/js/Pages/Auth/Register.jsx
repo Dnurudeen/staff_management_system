@@ -59,6 +59,7 @@ const PlanCard = ({
     isSelected,
     onSelect,
     isPopular,
+    employees,
 }) => (
     <div
         onClick={onSelect}
@@ -83,6 +84,10 @@ const PlanCard = ({
                 </span>
                 <span className="text-gray-500">/month</span>
             </div>
+            <p className="text-sm text-indigo-600 font-medium mt-1">
+                {employees === -1 ? "Unlimited" : `Up to ${employees}`}{" "}
+                employees
+            </p>
         </div>
         <ul className="mt-4 space-y-2">
             {features.map((feature, index) => (
@@ -188,6 +193,7 @@ export default function Register() {
         email: "",
         password: "",
         password_confirmation: "",
+        organization_name: "",
     });
 
     const steps = ["Account", "Plan", "Payment"];
@@ -196,34 +202,38 @@ export default function Register() {
         starter: {
             name: "Starter",
             price: 15000,
+            employees: 10,
             features: [
-                "Up to 10 employees",
                 "Basic attendance tracking",
                 "Leave management",
                 "Email support",
+                "5GB storage",
             ],
         },
         professional: {
             name: "Professional",
             price: 35000,
+            employees: 50,
             features: [
-                "Up to 50 employees",
                 "Advanced attendance & reports",
                 "Task management",
                 "Team messaging",
+                "Performance reviews",
                 "Priority support",
+                "25GB storage",
             ],
             isPopular: true,
         },
         enterprise: {
             name: "Enterprise",
             price: 75000,
+            employees: -1,
             features: [
-                "Unlimited employees",
                 "All features included",
                 "Custom integrations",
-                "24/7 support",
-                "Dedicated manager",
+                "API access",
+                "24/7 dedicated support",
+                "Unlimited storage",
             ],
         },
     };
@@ -231,6 +241,8 @@ export default function Register() {
     const validateStep1 = () => {
         const newErrors = {};
         if (!data.name.trim()) newErrors.name = "Name is required";
+        if (!data.organization_name.trim())
+            newErrors.organization_name = "Organization name is required";
         if (!data.email.trim()) newErrors.email = "Email is required";
         else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email))
             newErrors.email = "Invalid email format";
@@ -273,6 +285,7 @@ export default function Register() {
                 user_data: {
                     name: data.name,
                     password: data.password,
+                    organization_name: data.organization_name,
                 },
             });
 
@@ -321,17 +334,40 @@ export default function Register() {
                 {step === 1 && (
                     <div className="space-y-4">
                         <div>
-                            <InputLabel htmlFor="name" value="Full Name" />
+                            <InputLabel
+                                htmlFor="organization_name"
+                                value="Organization/Company Name"
+                            />
+                            <TextInput
+                                id="organization_name"
+                                name="organization_name"
+                                value={data.organization_name}
+                                className="mt-1 block w-full"
+                                isFocused={true}
+                                onChange={(e) =>
+                                    setData("organization_name", e.target.value)
+                                }
+                                placeholder="e.g., Acme Corporation"
+                                required
+                            />
+                            <InputError
+                                message={errors.organization_name}
+                                className="mt-2"
+                            />
+                        </div>
+
+                        <div>
+                            <InputLabel htmlFor="name" value="Your Full Name" />
                             <TextInput
                                 id="name"
                                 name="name"
                                 value={data.name}
                                 className="mt-1 block w-full"
                                 autoComplete="name"
-                                isFocused={true}
                                 onChange={(e) =>
                                     setData("name", e.target.value)
                                 }
+                                placeholder="e.g., John Doe"
                                 required
                             />
                             <InputError
@@ -352,6 +388,7 @@ export default function Register() {
                                 onChange={(e) =>
                                     setData("email", e.target.value)
                                 }
+                                placeholder="e.g., john@company.com"
                                 required
                             />
                             <InputError
@@ -430,6 +467,7 @@ export default function Register() {
                                     plan={plan.name}
                                     price={plan.price}
                                     features={plan.features}
+                                    employees={plan.employees}
                                     isSelected={selectedPlan === key}
                                     onSelect={() => setSelectedPlan(key)}
                                     isPopular={plan.isPopular}
@@ -457,18 +495,48 @@ export default function Register() {
                     <div className="space-y-6">
                         {/* Order Summary */}
                         <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
-                            <h3 className="font-semibold text-gray-900 mb-2">
+                            <h3 className="font-semibold text-gray-900 mb-3">
                                 Order Summary
                             </h3>
-                            <div className="flex justify-between items-center">
-                                <span className="text-gray-600">
-                                    {plans[selectedPlan].name} Plan
-                                </span>
-                                <span className="font-bold text-gray-900">
-                                    ₦
-                                    {plans[selectedPlan].price.toLocaleString()}
-                                    /month
-                                </span>
+                            <div className="space-y-2">
+                                <div className="flex justify-between items-center text-sm">
+                                    <span className="text-gray-600">
+                                        Organization
+                                    </span>
+                                    <span className="font-medium text-gray-900">
+                                        {data.organization_name}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between items-center text-sm">
+                                    <span className="text-gray-600">Plan</span>
+                                    <span className="font-medium text-gray-900">
+                                        {plans[selectedPlan].name}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between items-center text-sm">
+                                    <span className="text-gray-600">
+                                        Max Employees
+                                    </span>
+                                    <span className="font-medium text-gray-900">
+                                        {plans[selectedPlan].employees === -1
+                                            ? "Unlimited"
+                                            : plans[selectedPlan].employees}
+                                    </span>
+                                </div>
+                                <div className="border-t pt-2 mt-2">
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-gray-900 font-semibold">
+                                            Total
+                                        </span>
+                                        <span className="font-bold text-xl text-indigo-600">
+                                            ₦
+                                            {plans[
+                                                selectedPlan
+                                            ].price.toLocaleString()}
+                                            /month
+                                        </span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 

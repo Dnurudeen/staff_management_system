@@ -30,6 +30,7 @@ class User extends Authenticatable
         'role',
         'status',
         'department_id',
+        'organization_id',
         'phone',
         'avatar',
         'bio',
@@ -100,7 +101,33 @@ class User extends Authenticatable
         return $this->isPrimeAdmin() || $this->isAdmin();
     }
 
+    // Organization helper methods
+    public function hasFeature(string $feature): bool
+    {
+        return $this->organization?->hasFeature($feature) ?? false;
+    }
+
+    public function getOrganizationPlan(): ?string
+    {
+        return $this->organization?->subscription_plan;
+    }
+
+    public function isOrganizationOwner(): bool
+    {
+        return $this->organization?->owner_id === $this->id;
+    }
+
     // Relationships
+    public function organization(): BelongsTo
+    {
+        return $this->belongsTo(Organization::class);
+    }
+
+    public function ownedOrganization(): HasMany
+    {
+        return $this->hasMany(Organization::class, 'owner_id');
+    }
+
     public function department(): BelongsTo
     {
         return $this->belongsTo(Department::class);

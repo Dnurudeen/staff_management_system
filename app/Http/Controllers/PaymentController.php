@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Organization;
 use App\Models\Payment;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -41,6 +42,7 @@ class PaymentController extends Controller
             'user_data' => 'required|array',
             'user_data.name' => 'required|string|max:255',
             'user_data.password' => 'required|string|min:8',
+            'user_data.organization_name' => 'required|string|max:255',
         ]);
 
         $plan = $this->plans[$request->plan];
@@ -150,6 +152,7 @@ class PaymentController extends Controller
             'user_data' => 'required|array',
             'user_data.name' => 'required|string|max:255',
             'user_data.password' => 'required|string|min:8',
+            'user_data.organization_name' => 'required|string|max:255',
         ]);
 
         $plan = $this->plans[$request->plan];
@@ -252,7 +255,7 @@ class PaymentController extends Controller
     }
 
     /**
-     * Handle successful payment and create user
+     * Handle successful payment and create user with organization
      */
     protected function handleSuccessfulPayment(string $reference, string $provider, array $transactionData)
     {
@@ -274,7 +277,7 @@ class PaymentController extends Controller
             'paid_at' => now(),
         ]);
 
-        // Create the user
+        // Create the user (prime_admin)
         $userData = $payment->metadata['user_data'];
 
         $user = User::create([
@@ -287,6 +290,17 @@ class PaymentController extends Controller
             'subscription_expires_at' => now()->addMonth(),
             'is_paid' => true,
         ]);
+
+        // Create the organization for the prime_admin
+        $organization = Organization::create([
+            'name' => $userData['organization_name'] ?? $userData['name'] . "'s Organization",
+            'owner_id' => $user->id,
+            'subscription_plan' => $payment->plan,
+            'subscription_expires_at' => now()->addMonth(),
+        ]);
+
+        // Associate the user with the organization
+        $user->update(['organization_id' => $organization->id]);
 
         // Update payment with user_id
         $payment->update(['user_id' => $user->id]);

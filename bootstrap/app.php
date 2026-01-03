@@ -18,6 +18,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'role' => \App\Http\Middleware\RoleMiddleware::class,
+            'feature' => \App\Http\Middleware\CheckFeatureAccess::class,
         ]);
 
         // Exclude payment webhooks from CSRF verification

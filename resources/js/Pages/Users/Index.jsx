@@ -1,6 +1,6 @@
 import { useState } from "react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
-import { Head, router } from "@inertiajs/react";
+import { Head, router, usePage } from "@inertiajs/react";
 import DataTable from "@/Components/DataTable";
 import Modal from "@/Components/Modal";
 import Button from "@/Components/Button";
@@ -11,11 +11,16 @@ import {
     PlusIcon,
     ArrowDownTrayIcon,
     ArrowUpTrayIcon,
+    ExclamationTriangleIcon,
+    UserGroupIcon,
+    ChartBarIcon,
 } from "@heroicons/react/24/outline";
 
-export default function Index({ auth, users, filters }) {
+export default function Index({ auth, users, filters, organizationStats }) {
+    const { organization, planFeatures } = usePage().props;
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [userToDelete, setUserToDelete] = useState(null);
+    const [showUpgradeModal, setShowUpgradeModal] = useState(false);
     const [toast, setToast] = useState({
         show: false,
         message: "",
@@ -23,6 +28,16 @@ export default function Index({ auth, users, filters }) {
     });
     const [sortColumn, setSortColumn] = useState("name");
     const [sortDirection, setSortDirection] = useState("asc");
+
+    const canAddEmployee = organizationStats?.can_add_employee ?? true;
+    const employeeUsagePercentage =
+        organizationStats?.max_employees > 0
+            ? Math.round(
+                  (organizationStats?.current_employees /
+                      organizationStats?.max_employees) *
+                      100
+              )
+            : 0;
 
     const columns = [
         {
@@ -179,6 +194,14 @@ export default function Index({ auth, users, filters }) {
         window.location.href = route("users.export");
     };
 
+    const handleInviteClick = () => {
+        if (!canAddEmployee) {
+            setShowUpgradeModal(true);
+        } else {
+            router.visit(route("users.create"));
+        }
+    };
+
     const actions = (row) => (
         <div className="flex items-center justify-end space-x-2">
             <Button
@@ -220,9 +243,7 @@ export default function Index({ auth, users, filters }) {
                             <ArrowUpTrayIcon className="h-5 w-5 mr-2" />
                             Import
                         </Button>
-                        <Button
-                            onClick={() => router.visit(route("users.create"))}
-                        >
+                        <Button onClick={handleInviteClick}>
                             <PlusIcon className="h-5 w-5 mr-2" />
                             Invite User
                         </Button>
@@ -234,6 +255,110 @@ export default function Index({ auth, users, filters }) {
 
             <div className="py-12">
                 <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
+                    {/* Organization Stats Card */}
+                    {organizationStats && (
+                        <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6 mb-6">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center space-x-4">
+                                    <div className="p-3 bg-indigo-100 rounded-full">
+                                        <UserGroupIcon className="h-6 w-6 text-indigo-600" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-lg font-semibold text-gray-900">
+                                            {organization?.name ||
+                                                "Your Organization"}
+                                        </h3>
+                                        <p className="text-sm text-gray-500">
+                                            {organizationStats.plan_name} Plan
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center space-x-6">
+                                    <div className="text-center">
+                                        <p className="text-2xl font-bold text-gray-900">
+                                            {
+                                                organizationStats.current_employees
+                                            }
+                                        </p>
+                                        <p className="text-xs text-gray-500">
+                                            Employees
+                                        </p>
+                                    </div>
+                                    <div className="text-center">
+                                        <p className="text-2xl font-bold text-gray-900">
+                                            {organizationStats.max_employees ===
+                                            -1
+                                                ? "∞"
+                                                : organizationStats.max_employees}
+                                        </p>
+                                        <p className="text-xs text-gray-500">
+                                            Max Allowed
+                                        </p>
+                                    </div>
+                                    <div className="text-center">
+                                        <p className="text-2xl font-bold text-gray-900">
+                                            {organizationStats.remaining_slots ===
+                                            -1
+                                                ? "∞"
+                                                : organizationStats.remaining_slots}
+                                        </p>
+                                        <p className="text-xs text-gray-500">
+                                            Slots Left
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Progress Bar */}
+                            {organizationStats.max_employees !== -1 && (
+                                <div className="mt-4">
+                                    <div className="flex justify-between text-sm mb-1">
+                                        <span className="text-gray-600">
+                                            Employee Usage
+                                        </span>
+                                        <span
+                                            className={`font-medium ${
+                                                employeeUsagePercentage >= 90
+                                                    ? "text-red-600"
+                                                    : employeeUsagePercentage >=
+                                                      75
+                                                    ? "text-yellow-600"
+                                                    : "text-green-600"
+                                            }`}
+                                        >
+                                            {employeeUsagePercentage}%
+                                        </span>
+                                    </div>
+                                    <div className="w-full bg-gray-200 rounded-full h-2">
+                                        <div
+                                            className={`h-2 rounded-full transition-all duration-300 ${
+                                                employeeUsagePercentage >= 90
+                                                    ? "bg-red-500"
+                                                    : employeeUsagePercentage >=
+                                                      75
+                                                    ? "bg-yellow-500"
+                                                    : "bg-green-500"
+                                            }`}
+                                            style={{
+                                                width: `${Math.min(
+                                                    employeeUsagePercentage,
+                                                    100
+                                                )}%`,
+                                            }}
+                                        />
+                                    </div>
+                                    {employeeUsagePercentage >= 90 && (
+                                        <div className="mt-2 flex items-center text-sm text-yellow-600">
+                                            <ExclamationTriangleIcon className="h-4 w-4 mr-1" />
+                                            You're approaching your employee
+                                            limit. Consider upgrading your plan.
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                     <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
                         <DataTable
                             columns={columns}
@@ -252,6 +377,7 @@ export default function Index({ auth, users, filters }) {
                 </div>
             </div>
 
+            {/* Delete Modal */}
             <Modal
                 show={showDeleteModal}
                 onClose={() => setShowDeleteModal(false)}
@@ -272,6 +398,57 @@ export default function Index({ auth, users, filters }) {
                     </Button>
                     <Button variant="danger" onClick={confirmDelete}>
                         Delete
+                    </Button>
+                </div>
+            </Modal>
+
+            {/* Upgrade Modal */}
+            <Modal
+                show={showUpgradeModal}
+                onClose={() => setShowUpgradeModal(false)}
+                title="Employee Limit Reached"
+                maxWidth="md"
+            >
+                <div className="text-center py-4">
+                    <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-yellow-100 mb-4">
+                        <ExclamationTriangleIcon className="h-6 w-6 text-yellow-600" />
+                    </div>
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">
+                        Upgrade Required
+                    </h3>
+                    <p className="text-sm text-gray-600 mb-4">
+                        You've reached the maximum number of employees (
+                        {organizationStats?.max_employees}) for your{" "}
+                        <strong>{organizationStats?.plan_name}</strong> plan.
+                        Upgrade your plan to add more team members.
+                    </p>
+                    <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                        <p className="text-sm text-gray-600">
+                            <strong>Current Plan:</strong>{" "}
+                            {organizationStats?.plan_name}
+                            <br />
+                            <strong>Employees:</strong>{" "}
+                            {organizationStats?.current_employees} /{" "}
+                            {organizationStats?.max_employees}
+                        </p>
+                    </div>
+                </div>
+                <div className="flex justify-end space-x-2">
+                    <Button
+                        variant="ghost"
+                        onClick={() => setShowUpgradeModal(false)}
+                    >
+                        Cancel
+                    </Button>
+                    <Button
+                        onClick={() => {
+                            setShowUpgradeModal(false);
+                            // Navigate to billing/upgrade page
+                            router.visit(route("billing.index"));
+                        }}
+                    >
+                        <ChartBarIcon className="h-4 w-4 mr-2" />
+                        Upgrade Plan
                     </Button>
                 </div>
             </Modal>

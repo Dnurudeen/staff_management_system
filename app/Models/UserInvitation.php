@@ -14,6 +14,7 @@ class UserInvitation extends Model
         'email',
         'role',
         'department_id',
+        'organization_id',
         'invited_by',
         'token',
         'expires_at',
@@ -48,6 +49,14 @@ class UserInvitation extends Model
     public function department()
     {
         return $this->belongsTo(Department::class);
+    }
+
+    /**
+     * Get the organization for this invitation
+     */
+    public function organization()
+    {
+        return $this->belongsTo(Organization::class);
     }
 
     /**

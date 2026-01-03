@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Models\Department;
+use App\Models\Organization;
 use App\Models\UserInvitation;
 use App\Mail\InviteUserMail;
 use Illuminate\Http\Request;
@@ -21,7 +22,12 @@ class UserController extends Controller
      */
     public function index(Request $request)
     {
-        $query = User::with('department');
+        $user = Auth::user();
+        $organization = $user->organization;
+
+        // Only show users from the same organization
+        $query = User::with(['department', 'organization'])
+            ->where('organization_id', $user->organization_id);
 
         // Search
         if ($request->has('search')) {
@@ -49,12 +55,34 @@ class UserController extends Controller
         }
 
         $users = $query->latest()->paginate(15);
-        $departments = Department::where('status', 'active')->get();
+
+        // Only show departments from the same organization
+        $departments = Department::where('status', 'active')
+            ->where('organization_id', $user->organization_id)
+            ->get();
+
+        // Get organization stats for plan-based limits
+        $organizationStats = null;
+        if ($organization) {
+            $organizationStats = [
+                'current_employees' => $organization->getEmployeeCount(),
+                'max_employees' => $organization->max_employees,
+                'remaining_slots' => $organization->getRemainingEmployeeSlots(),
+                'can_add_employee' => $organization->canAddEmployee(),
+                'plan' => $organization->subscription_plan,
+                'plan_name' => $organization->getPlanDetails()['name'] ?? 'Unknown',
+                'features' => $organization->features,
+                'storage_used' => $organization->storage_used,
+                'storage_limit' => $organization->storage_limit,
+                'storage_percentage' => $organization->getStorageUsedPercentage(),
+            ];
+        }
 
         return Inertia::render('Users/Index', [
             'users' => $users,
             'departments' => $departments,
-            'filters' => $request->only(['search', 'role', 'status', 'department_id'])
+            'filters' => $request->only(['search', 'role', 'status', 'department_id']),
+            'organizationStats' => $organizationStats,
         ]);
     }
 
@@ -63,10 +91,26 @@ class UserController extends Controller
      */
     public function create()
     {
-        $departments = Department::where('status', 'active')->get();
+        $user = Auth::user();
+        $organization = $user->organization;
+
+        // Check if organization can add more employees
+        if ($organization && !$organization->canAddEmployee()) {
+            return redirect()->route('users.index')
+                ->with('error', 'You have reached the maximum number of employees for your plan. Please upgrade to add more employees.');
+        }
+
+        $departments = Department::where('status', 'active')
+            ->where('organization_id', $user->organization_id)
+            ->get();
 
         return Inertia::render('Users/CreateEdit', [
-            'departments' => $departments
+            'departments' => $departments,
+            'organizationStats' => $organization ? [
+                'can_add_employee' => $organization->canAddEmployee(),
+                'remaining_slots' => $organization->getRemainingEmployeeSlots(),
+                'plan' => $organization->subscription_plan,
+            ] : null,
         ]);
     }
 
@@ -75,6 +119,15 @@ class UserController extends Controller
      */
     public function store(Request $request)
     {
+        $user = Auth::user();
+        $organization = $user->organization;
+
+        // Check if organization can add more employees
+        if ($organization && !$organization->canAddEmployee()) {
+            return redirect()->route('users.index')
+                ->with('error', 'You have reached the maximum number of employees for your plan. Please upgrade to add more employees.');
+        }
+
         $validated = $request->validate([
             'email' => 'required|email|unique:users,email|unique:user_invitations,email',
             'role' => ['required', Rule::in(['prime_admin', 'admin', 'staff'])],
@@ -91,6 +144,7 @@ class UserController extends Controller
             'email' => $validated['email'],
             'role' => $validated['role'],
             'department_id' => $validated['department_id'] ?? null,
+            'organization_id' => $user->organization_id, // Associate invitation with organization
             'invited_by' => Auth::id(),
             'token' => UserInvitation::generateToken(),
             'expires_at' => now()->addDays(7), // Link expires in 7 days
@@ -122,8 +176,14 @@ class UserController extends Controller
      */
     public function show(User $user)
     {
+        // Ensure user belongs to the same organization
+        if ($user->organization_id !== Auth::user()->organization_id) {
+            abort(403, 'You do not have permission to view this user.');
+        }
+
         $user->load([
             'department',
+            'organization',
             'attendances' => fn($q) => $q->latest()->take(10),
             'leaveRequests' => fn($q) => $q->latest()->take(5),
             'assignedTasks' => fn($q) => $q->latest()->take(5),
@@ -140,12 +200,19 @@ class UserController extends Controller
      */
     public function edit(User $user)
     {
+        // Ensure user belongs to the same organization
+        if ($user->organization_id !== Auth::user()->organization_id) {
+            abort(403, 'You do not have permission to edit this user.');
+        }
+
         // Check permission
         if ($user->isPrimeAdmin() && !Auth::user()->isPrimeAdmin()) {
             abort(403, 'Cannot edit Prime Admin.');
         }
 
-        $departments = Department::where('status', 'active')->get();
+        $departments = Department::where('status', 'active')
+            ->where('organization_id', Auth::user()->organization_id)
+            ->get();
 
         return Inertia::render('Users/Edit', [
             'user' => $user,
@@ -158,6 +225,11 @@ class UserController extends Controller
      */
     public function update(Request $request, User $user)
     {
+        // Ensure user belongs to the same organization
+        if ($user->organization_id !== Auth::user()->organization_id) {
+            abort(403, 'You do not have permission to edit this user.');
+        }
+
         // Check permission
         if ($user->isPrimeAdmin() && !Auth::user()->isPrimeAdmin()) {
             abort(403, 'Cannot edit Prime Admin.');
@@ -207,6 +279,11 @@ class UserController extends Controller
      */
     public function destroy(User $user)
     {
+        // Ensure user belongs to the same organization
+        if ($user->organization_id !== Auth::user()->organization_id) {
+            abort(403, 'You do not have permission to delete this user.');
+        }
+
         // Prevent deleting Prime Admin
         if ($user->isPrimeAdmin()) {
             abort(403, 'Cannot delete Prime Admin.');
@@ -264,7 +341,12 @@ class UserController extends Controller
      */
     public function export(Request $request)
     {
-        $users = User::with('department')->get();
+        $user = Auth::user();
+
+        // Only export users from the same organization
+        $users = User::with('department')
+            ->where('organization_id', $user->organization_id)
+            ->get();
 
         $filename = 'users_' . now()->format('Y-m-d_His') . '.csv';
         $headers = [
