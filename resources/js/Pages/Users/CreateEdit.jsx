@@ -11,6 +11,7 @@ import {
     ExclamationTriangleIcon,
     EnvelopeIcon,
     UserPlusIcon,
+    BuildingOffice2Icon,
 } from "@heroicons/react/24/outline";
 
 export default function CreateEdit({
@@ -21,11 +22,27 @@ export default function CreateEdit({
 }) {
     const { flash } = usePage().props;
     const isEdit = !!user;
+
+    // Get initial department IDs for edit mode
+    const getInitialDepartmentIds = () => {
+        if (!user) return [];
+        const deptIds = [];
+        if (user.departments && user.departments.length > 0) {
+            user.departments.forEach((dept) => deptIds.push(dept.id));
+        }
+        // Also include legacy department if exists
+        if (user.department_id && !deptIds.includes(user.department_id)) {
+            deptIds.push(user.department_id);
+        }
+        return deptIds;
+    };
+
     const { data, setData, post, put, processing, errors, reset } = useForm({
         // For invitation (create mode)
         email: user?.email || "",
         role: user?.role || "staff",
         department_id: user?.department_id || "",
+        department_ids: getInitialDepartmentIds(),
 
         // For edit mode only
         name: user?.name || "",
@@ -759,34 +776,85 @@ export default function CreateEdit({
                                         </div>
 
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700">
-                                                Department
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                <div className="flex items-center">
+                                                    <BuildingOffice2Icon className="h-5 w-5 mr-2 text-gray-500" />
+                                                    Departments / Teams
+                                                </div>
                                             </label>
-                                            <select
-                                                value={data.department_id}
-                                                onChange={(e) =>
-                                                    setData(
-                                                        "department_id",
-                                                        e.target.value
-                                                    )
-                                                }
-                                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                                            >
-                                                <option value="">
-                                                    Select Department
-                                                </option>
-                                                {departments.map((dept) => (
-                                                    <option
-                                                        key={dept.id}
-                                                        value={dept.id}
-                                                    >
-                                                        {dept.name}
-                                                    </option>
-                                                ))}
-                                            </select>
-                                            {errors.department_id && (
+                                            <p className="text-xs text-gray-500 mb-3">
+                                                Select all teams this user
+                                                belongs to. Users can be members
+                                                of multiple teams.
+                                            </p>
+                                            <div className="space-y-2 max-h-48 overflow-y-auto border border-gray-200 rounded-lg p-3">
+                                                {departments &&
+                                                departments.length > 0 ? (
+                                                    departments.map((dept) => (
+                                                        <label
+                                                            key={dept.id}
+                                                            className={`flex items-center p-2 rounded-lg cursor-pointer transition-colors ${
+                                                                data.department_ids.includes(
+                                                                    dept.id
+                                                                )
+                                                                    ? "bg-indigo-50 border border-indigo-200"
+                                                                    : "hover:bg-gray-50 border border-transparent"
+                                                            }`}
+                                                        >
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={data.department_ids.includes(
+                                                                    dept.id
+                                                                )}
+                                                                onChange={(
+                                                                    e
+                                                                ) => {
+                                                                    if (
+                                                                        e.target
+                                                                            .checked
+                                                                    ) {
+                                                                        setData(
+                                                                            "department_ids",
+                                                                            [
+                                                                                ...data.department_ids,
+                                                                                dept.id,
+                                                                            ]
+                                                                        );
+                                                                    } else {
+                                                                        setData(
+                                                                            "department_ids",
+                                                                            data.department_ids.filter(
+                                                                                (
+                                                                                    id
+                                                                                ) =>
+                                                                                    id !==
+                                                                                    dept.id
+                                                                            )
+                                                                        );
+                                                                    }
+                                                                }}
+                                                                className="h-4 w-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
+                                                            />
+                                                            <span className="ml-3 text-sm text-gray-900">
+                                                                {dept.name}
+                                                            </span>
+                                                        </label>
+                                                    ))
+                                                ) : (
+                                                    <p className="text-sm text-gray-500 text-center py-2">
+                                                        No departments available
+                                                    </p>
+                                                )}
+                                            </div>
+                                            {data.department_ids.length > 0 && (
+                                                <p className="mt-2 text-xs text-indigo-600">
+                                                    {data.department_ids.length}{" "}
+                                                    team(s) selected
+                                                </p>
+                                            )}
+                                            {errors.department_ids && (
                                                 <p className="mt-1 text-sm text-red-600">
-                                                    {errors.department_id}
+                                                    {errors.department_ids}
                                                 </p>
                                             )}
                                         </div>

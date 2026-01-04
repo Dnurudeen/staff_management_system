@@ -26,7 +26,8 @@ class UserController extends Controller
         $organization = $user->organization;
 
         // Only show users from the same organization
-        $query = User::with(['department', 'organization'])
+        // Load both the legacy department and the many-to-many departments
+        $query = User::with(['department', 'departments', 'organization'])
             ->where('organization_id', $user->organization_id);
 
         // Search
@@ -49,9 +50,15 @@ class UserController extends Controller
             $query->where('status', $request->status);
         }
 
-        // Filter by department
+        // Filter by department (check both legacy and many-to-many)
         if ($request->has('department_id') && $request->department_id !== 'all') {
-            $query->where('department_id', $request->department_id);
+            $departmentId = $request->department_id;
+            $query->where(function ($q) use ($departmentId) {
+                $q->where('department_id', $departmentId)
+                    ->orWhereHas('departments', function ($sq) use ($departmentId) {
+                        $sq->where('departments.id', $departmentId);
+                    });
+            });
         }
 
         $users = $query->latest()->paginate(15);
@@ -186,6 +193,7 @@ class UserController extends Controller
 
         $user->load([
             'department',
+            'departments',
             'organization',
             'attendances' => fn($q) => $q->latest()->take(10),
             'leaveRequests' => fn($q) => $q->latest()->take(5),
@@ -212,6 +220,9 @@ class UserController extends Controller
         if ($user->isPrimeAdmin() && !Auth::user()->isPrimeAdmin()) {
             abort(403, 'Cannot edit Prime Admin.');
         }
+
+        // Load user's departments
+        $user->load('departments');
 
         $departments = Department::where('status', 'active')
             ->where('organization_id', Auth::user()->organization_id)
@@ -245,6 +256,8 @@ class UserController extends Controller
             'role' => ['required', Rule::in(['prime_admin', 'admin', 'staff'])],
             'status' => ['required', Rule::in(['active', 'inactive', 'suspended'])],
             'department_id' => 'nullable|exists:departments,id',
+            'department_ids' => 'nullable|array',
+            'department_ids.*' => 'exists:departments,id',
             'phone' => 'nullable|string|max:20',
             'bio' => 'nullable|string|max:500',
             'avatar' => 'nullable|image|max:2048',
@@ -271,7 +284,14 @@ class UserController extends Controller
             unset($validated['password']);
         }
 
+        // Extract department_ids for syncing
+        $departmentIds = $validated['department_ids'] ?? [];
+        unset($validated['department_ids']);
+
         $user->update($validated);
+
+        // Sync departments (many-to-many)
+        $user->departments()->sync($departmentIds);
 
         return redirect()->route('users.index')
             ->with('success', 'User updated successfully.');
@@ -377,5 +397,97 @@ class UserController extends Controller
         };
 
         return response()->stream($callback, 200, $headers);
+    }
+
+    /**
+     * Update user's departments (add/remove from departments)
+     */
+    public function updateDepartments(Request $request, User $user)
+    {
+        // Ensure user belongs to the same organization
+        if ($user->organization_id !== Auth::user()->organization_id) {
+            abort(403, 'You do not have permission to manage this user\'s departments.');
+        }
+
+        $validated = $request->validate([
+            'department_ids' => 'required|array',
+            'department_ids.*' => 'exists:departments,id',
+        ]);
+
+        // Verify all departments belong to the same organization
+        $validDepartmentIds = Department::whereIn('id', $validated['department_ids'])
+            ->where('organization_id', Auth::user()->organization_id)
+            ->pluck('id')
+            ->toArray();
+
+        // Sync the departments
+        $user->departments()->sync($validDepartmentIds);
+
+        return redirect()->back()
+            ->with('success', 'User departments updated successfully.');
+    }
+
+    /**
+     * Add user to a department
+     */
+    public function addToDepartment(Request $request, User $user)
+    {
+        // Ensure user belongs to the same organization
+        if ($user->organization_id !== Auth::user()->organization_id) {
+            abort(403, 'You do not have permission to manage this user\'s departments.');
+        }
+
+        $validated = $request->validate([
+            'department_id' => 'required|exists:departments,id',
+        ]);
+
+        // Verify department belongs to the same organization
+        $department = Department::where('id', $validated['department_id'])
+            ->where('organization_id', Auth::user()->organization_id)
+            ->first();
+
+        if (!$department) {
+            abort(403, 'Invalid department.');
+        }
+
+        // Attach without detaching existing
+        $user->departments()->syncWithoutDetaching([$department->id]);
+
+        return response()->json([
+            'success' => true,
+            'message' => "User added to {$department->name} successfully.",
+        ]);
+    }
+
+    /**
+     * Remove user from a department
+     */
+    public function removeFromDepartment(Request $request, User $user)
+    {
+        // Ensure user belongs to the same organization
+        if ($user->organization_id !== Auth::user()->organization_id) {
+            abort(403, 'You do not have permission to manage this user\'s departments.');
+        }
+
+        $validated = $request->validate([
+            'department_id' => 'required|exists:departments,id',
+        ]);
+
+        // Verify department belongs to the same organization
+        $department = Department::where('id', $validated['department_id'])
+            ->where('organization_id', Auth::user()->organization_id)
+            ->first();
+
+        if (!$department) {
+            abort(403, 'Invalid department.');
+        }
+
+        // Detach the department
+        $user->departments()->detach($department->id);
+
+        return response()->json([
+            'success' => true,
+            'message' => "User removed from {$department->name} successfully.",
+        ]);
     }
 }

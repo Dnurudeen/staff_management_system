@@ -61,6 +61,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('users/import', [UserController::class, 'import'])->name('users.import');
         Route::get('users/export', [UserController::class, 'export'])->name('users.export');
 
+        // User Department Management
+        Route::put('users/{user}/departments', [UserController::class, 'updateDepartments'])->name('users.departments.update');
+        Route::post('users/{user}/departments/add', [UserController::class, 'addToDepartment'])->name('users.departments.add');
+        Route::post('users/{user}/departments/remove', [UserController::class, 'removeFromDepartment'])->name('users.departments.remove');
+
         // Invitations
         Route::get('invitations', [InvitationController::class, 'index'])->name('invitations.index');
         Route::post('invitations/{invitation}/resend', [InvitationController::class, 'resend'])->name('invitations.resend');

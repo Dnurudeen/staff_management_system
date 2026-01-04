@@ -15,13 +15,24 @@ import {
     UserGroupIcon,
     ChartBarIcon,
     EnvelopeIcon,
+    BuildingOffice2Icon,
+    XMarkIcon,
 } from "@heroicons/react/24/outline";
 
-export default function Index({ auth, users, filters, organizationStats }) {
+export default function Index({
+    auth,
+    users,
+    filters,
+    organizationStats,
+    departments,
+}) {
     const { organization, planFeatures } = usePage().props;
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [userToDelete, setUserToDelete] = useState(null);
     const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+    const [showDepartmentModal, setShowDepartmentModal] = useState(false);
+    const [selectedUser, setSelectedUser] = useState(null);
+    const [selectedDepartments, setSelectedDepartments] = useState([]);
     const [toast, setToast] = useState({
         show: false,
         message: "",
@@ -86,10 +97,67 @@ export default function Index({ auth, users, filters, organizationStats }) {
             ),
         },
         {
-            key: "department",
-            label: "Department",
+            key: "departments",
+            label: "Department/Team",
             sortable: false,
-            render: (value) => (value ? value.name : "-"),
+            render: (value, row) => {
+                // Combine legacy department with many-to-many departments
+                const allDepartments = [];
+
+                // Add departments from many-to-many relationship
+                if (row.departments && row.departments.length > 0) {
+                    row.departments.forEach((dept) => {
+                        if (!allDepartments.find((d) => d.id === dept.id)) {
+                            allDepartments.push(dept);
+                        }
+                    });
+                }
+
+                // Also check legacy department field
+                if (
+                    row.department &&
+                    !allDepartments.find((d) => d.id === row.department.id)
+                ) {
+                    allDepartments.push(row.department);
+                }
+
+                if (allDepartments.length === 0) {
+                    return (
+                        <button
+                            onClick={() => openDepartmentModal(row)}
+                            className="text-gray-400 hover:text-indigo-600 text-sm flex items-center gap-1"
+                        >
+                            <PlusIcon className="h-4 w-4" />
+                            Add Team
+                        </button>
+                    );
+                }
+
+                return (
+                    <div className="flex flex-wrap gap-1 items-center">
+                        {allDepartments.slice(0, 2).map((dept) => (
+                            <span
+                                key={dept.id}
+                                className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800"
+                            >
+                                {dept.name}
+                            </span>
+                        ))}
+                        {allDepartments.length > 2 && (
+                            <span className="text-xs text-gray-500">
+                                +{allDepartments.length - 2} more
+                            </span>
+                        )}
+                        <button
+                            onClick={() => openDepartmentModal(row)}
+                            className="ml-1 text-gray-400 hover:text-indigo-600"
+                            title="Manage Teams"
+                        >
+                            <PencilIcon className="h-3.5 w-3.5" />
+                        </button>
+                    </div>
+                );
+            },
         },
         {
             key: "status",
@@ -189,6 +257,55 @@ export default function Index({ auth, users, filters, organizationStats }) {
                 });
             },
         });
+    };
+
+    const openDepartmentModal = (user) => {
+        setSelectedUser(user);
+        // Get current department IDs from the user
+        const currentDeptIds = [];
+        if (user.departments && user.departments.length > 0) {
+            user.departments.forEach((dept) => currentDeptIds.push(dept.id));
+        }
+        // Also include legacy department if exists and not already included
+        if (user.department && !currentDeptIds.includes(user.department.id)) {
+            currentDeptIds.push(user.department.id);
+        }
+        setSelectedDepartments(currentDeptIds);
+        setShowDepartmentModal(true);
+    };
+
+    const toggleDepartment = (deptId) => {
+        setSelectedDepartments((prev) => {
+            if (prev.includes(deptId)) {
+                return prev.filter((id) => id !== deptId);
+            }
+            return [...prev, deptId];
+        });
+    };
+
+    const saveDepartments = () => {
+        router.put(
+            route("users.departments.update", selectedUser.id),
+            { department_ids: selectedDepartments },
+            {
+                onSuccess: () => {
+                    setShowDepartmentModal(false);
+                    setSelectedUser(null);
+                    setToast({
+                        show: true,
+                        message: "User departments updated successfully!",
+                        type: "success",
+                    });
+                },
+                onError: () => {
+                    setToast({
+                        show: true,
+                        message: "Failed to update departments!",
+                        type: "error",
+                    });
+                },
+            }
+        );
     };
 
     const handleExport = () => {
@@ -460,6 +577,108 @@ export default function Index({ auth, users, filters, organizationStats }) {
                         <ChartBarIcon className="h-4 w-4 mr-2" />
                         Upgrade Plan
                     </Button>
+                </div>
+            </Modal>
+
+            {/* Department Management Modal */}
+            <Modal
+                show={showDepartmentModal}
+                onClose={() => setShowDepartmentModal(false)}
+                maxWidth="md"
+            >
+                <div className="p-6">
+                    <div className="flex items-center mb-4">
+                        <div className="p-2 bg-indigo-100 rounded-full mr-3">
+                            <BuildingOffice2Icon className="h-6 w-6 text-indigo-600" />
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-semibold text-gray-900">
+                                Manage Teams
+                            </h3>
+                            <p className="text-sm text-gray-500">
+                                {selectedUser?.name}
+                            </p>
+                        </div>
+                    </div>
+
+                    <p className="text-sm text-gray-600 mb-4">
+                        Select the departments/teams this user belongs to. Users
+                        can be members of multiple teams.
+                    </p>
+
+                    {departments && departments.length > 0 ? (
+                        <div className="space-y-2 max-h-64 overflow-y-auto">
+                            {departments.map((dept) => (
+                                <label
+                                    key={dept.id}
+                                    className={`flex items-center p-3 rounded-lg border cursor-pointer transition-colors ${
+                                        selectedDepartments.includes(dept.id)
+                                            ? "border-indigo-500 bg-indigo-50"
+                                            : "border-gray-200 hover:bg-gray-50"
+                                    }`}
+                                >
+                                    <input
+                                        type="checkbox"
+                                        checked={selectedDepartments.includes(
+                                            dept.id
+                                        )}
+                                        onChange={() =>
+                                            toggleDepartment(dept.id)
+                                        }
+                                        className="h-4 w-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
+                                    />
+                                    <div className="ml-3 flex-1">
+                                        <span className="font-medium text-gray-900">
+                                            {dept.name}
+                                        </span>
+                                        {dept.description && (
+                                            <p className="text-xs text-gray-500 mt-0.5">
+                                                {dept.description}
+                                            </p>
+                                        )}
+                                    </div>
+                                    {selectedDepartments.includes(dept.id) && (
+                                        <span className="text-xs bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-full">
+                                            Member
+                                        </span>
+                                    )}
+                                </label>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="text-center py-8 text-gray-500">
+                            <BuildingOffice2Icon className="h-12 w-12 mx-auto text-gray-300 mb-2" />
+                            <p>No departments/teams created yet.</p>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="mt-2"
+                                onClick={() =>
+                                    router.visit(route("departments.create"))
+                                }
+                            >
+                                <PlusIcon className="h-4 w-4 mr-1" />
+                                Create Team
+                            </Button>
+                        </div>
+                    )}
+
+                    <div className="flex justify-between items-center mt-6 pt-4 border-t">
+                        <span className="text-sm text-gray-500">
+                            {selectedDepartments.length} team(s) selected
+                        </span>
+                        <div className="flex space-x-2">
+                            <Button
+                                variant="ghost"
+                                onClick={() => setShowDepartmentModal(false)}
+                            >
+                                Cancel
+                            </Button>
+                            <Button onClick={saveDepartments}>
+                                Save Changes
+                            </Button>
+                        </div>
+                    </div>
                 </div>
             </Modal>
 

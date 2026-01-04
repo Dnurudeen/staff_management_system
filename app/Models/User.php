@@ -133,6 +133,16 @@ class User extends Authenticatable
         return $this->belongsTo(Department::class);
     }
 
+    /**
+     * Many-to-many relationship with departments
+     * A user can belong to multiple departments/teams
+     */
+    public function departments(): BelongsToMany
+    {
+        return $this->belongsToMany(Department::class, 'department_user')
+            ->withTimestamps();
+    }
+
     public function attendances(): HasMany
     {
         return $this->hasMany(Attendance::class);

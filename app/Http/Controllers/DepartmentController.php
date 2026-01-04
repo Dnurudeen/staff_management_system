@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Department;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
@@ -15,10 +16,13 @@ class DepartmentController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Department::with(['head', 'users']);
+        $user = Auth::user();
+
+        $query = Department::with(['head', 'users', 'members'])
+            ->where('organization_id', $user->organization_id);
 
         // Search
-        if ($request->has('search')) {
+        if ($request->has('search') && $request->search) {
             $query->where('name', 'like', "%{$request->search}%");
         }
 
@@ -27,7 +31,18 @@ class DepartmentController extends Controller
             $query->where('status', $request->status);
         }
 
-        $departments = $query->withCount('users')->latest()->paginate(15);
+        // Count both legacy users and many-to-many members
+        $departments = $query->withCount(['users', 'members'])->latest()->paginate(15)->withQueryString();
+
+        // Add combined count for each department
+        $departments->getCollection()->transform(function ($department) {
+            // Get unique user IDs from both relationships
+            $legacyUserIds = $department->users->pluck('id')->toArray();
+            $memberIds = $department->members->pluck('id')->toArray();
+            $allMemberIds = array_unique(array_merge($legacyUserIds, $memberIds));
+            $department->users_count = count($allMemberIds);
+            return $department;
+        });
 
         return Inertia::render('Departments/Index', [
             'departments' => $departments,
@@ -40,12 +55,18 @@ class DepartmentController extends Controller
      */
     public function create()
     {
-        $users = User::whereIn('role', ['admin', 'staff'])
-            ->where('status', 'active')
-            ->get(['id', 'name', 'email']);
+        $user = Auth::user();
 
-        return Inertia::render('Departments/Create', [
-            'users' => $users
+        // Get users from the same organization who can be department heads
+        $users = User::where('organization_id', $user->organization_id)
+            ->whereIn('role', ['prime_admin', 'admin', 'staff'])
+            ->where('status', 'active')
+            ->orderBy('name')
+            ->get(['id', 'name', 'email', 'role']);
+
+        return Inertia::render('Departments/CreateEdit', [
+            'users' => $users,
+            'department' => null,
         ]);
     }
 
@@ -54,17 +75,29 @@ class DepartmentController extends Controller
      */
     public function store(Request $request)
     {
+        $user = Auth::user();
+
         $validated = $request->validate([
-            'name' => 'required|string|max:255|unique:departments,name',
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('departments')->where(function ($query) use ($user) {
+                    return $query->where('organization_id', $user->organization_id);
+                }),
+            ],
             'description' => 'nullable|string|max:1000',
             'head_id' => 'nullable|exists:users,id',
             'status' => ['required', Rule::in(['active', 'inactive'])],
         ]);
 
+        // Add organization_id
+        $validated['organization_id'] = $user->organization_id;
+
         $department = Department::create($validated);
 
         return redirect()->route('departments.index')
-            ->with('success', 'Department created successfully.');
+            ->with('success', 'Department/Team created successfully.');
     }
 
     /**
@@ -72,6 +105,13 @@ class DepartmentController extends Controller
      */
     public function show(Department $department)
     {
+        $user = Auth::user();
+
+        // Ensure department belongs to user's organization
+        if ($department->organization_id !== $user->organization_id) {
+            abort(403, 'You do not have permission to view this department.');
+        }
+
         $department->load([
             'head',
             'users' => fn($q) => $q->with('attendances')->latest(),
@@ -88,11 +128,20 @@ class DepartmentController extends Controller
      */
     public function edit(Department $department)
     {
-        $users = User::whereIn('role', ['admin', 'staff'])
-            ->where('status', 'active')
-            ->get(['id', 'name', 'email']);
+        $user = Auth::user();
 
-        return Inertia::render('Departments/Edit', [
+        // Ensure department belongs to user's organization
+        if ($department->organization_id !== $user->organization_id) {
+            abort(403, 'You do not have permission to edit this department.');
+        }
+
+        $users = User::where('organization_id', $user->organization_id)
+            ->whereIn('role', ['prime_admin', 'admin', 'staff'])
+            ->where('status', 'active')
+            ->orderBy('name')
+            ->get(['id', 'name', 'email', 'role']);
+
+        return Inertia::render('Departments/CreateEdit', [
             'department' => $department,
             'users' => $users
         ]);
@@ -103,8 +152,22 @@ class DepartmentController extends Controller
      */
     public function update(Request $request, Department $department)
     {
+        $user = Auth::user();
+
+        // Ensure department belongs to user's organization
+        if ($department->organization_id !== $user->organization_id) {
+            abort(403, 'You do not have permission to update this department.');
+        }
+
         $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255', Rule::unique('departments')->ignore($department->id)],
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('departments')->where(function ($query) use ($user) {
+                    return $query->where('organization_id', $user->organization_id);
+                })->ignore($department->id),
+            ],
             'description' => 'nullable|string|max:1000',
             'head_id' => 'nullable|exists:users,id',
             'status' => ['required', Rule::in(['active', 'inactive'])],
@@ -113,7 +176,7 @@ class DepartmentController extends Controller
         $department->update($validated);
 
         return redirect()->route('departments.index')
-            ->with('success', 'Department updated successfully.');
+            ->with('success', 'Department/Team updated successfully.');
     }
 
     /**
@@ -121,15 +184,25 @@ class DepartmentController extends Controller
      */
     public function destroy(Department $department)
     {
-        // Check if department has users
-        if ($department->users()->count() > 0) {
+        $user = Auth::user();
+
+        // Ensure department belongs to user's organization
+        if ($department->organization_id !== $user->organization_id) {
+            abort(403, 'You do not have permission to delete this department.');
+        }
+
+        // Check if department has users (both legacy and many-to-many)
+        $hasLegacyUsers = $department->users()->count() > 0;
+        $hasMembers = $department->members()->count() > 0;
+
+        if ($hasLegacyUsers || $hasMembers) {
             return redirect()->route('departments.index')
-                ->with('error', 'Cannot delete department with assigned users.');
+                ->with('error', 'Cannot delete department/team with assigned members.');
         }
 
         $department->delete();
 
         return redirect()->route('departments.index')
-            ->with('success', 'Department deleted successfully.');
+            ->with('success', 'Department/Team deleted successfully.');
     }
 }
