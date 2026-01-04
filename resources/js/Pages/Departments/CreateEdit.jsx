@@ -3,6 +3,7 @@ import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { Head, useForm, router } from "@inertiajs/react";
 import Button from "@/Components/Button";
 import Toast from "@/Components/Toast";
+import AIDescriptionField from "@/Components/AIDescriptionField";
 import {
     BuildingOffice2Icon,
     UserGroupIcon,
@@ -133,33 +134,19 @@ export default function CreateEdit({ auth, department, users }) {
                                     )}
                                 </div>
 
-                                {/* Description */}
-                                <div>
-                                    <label
-                                        htmlFor="description"
-                                        className="block text-sm font-medium text-gray-700"
-                                    >
-                                        Description
-                                    </label>
-                                    <textarea
-                                        id="description"
-                                        value={data.description}
-                                        onChange={(e) =>
-                                            setData(
-                                                "description",
-                                                e.target.value
-                                            )
-                                        }
-                                        rows={4}
-                                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                                        placeholder="Brief description of what this department/team does..."
-                                    />
-                                    {errors.description && (
-                                        <p className="mt-1 text-sm text-red-600">
-                                            {errors.description}
-                                        </p>
-                                    )}
-                                </div>
+                                {/* AI-Enhanced Description */}
+                                <AIDescriptionField
+                                    title={data.name}
+                                    value={data.description}
+                                    onChange={(value) =>
+                                        setData("description", value)
+                                    }
+                                    type="department"
+                                    label="Description"
+                                    placeholder="Brief description of what this department/team does or click 'AI Suggest'..."
+                                    error={errors.description}
+                                    rows={4}
+                                />
 
                                 {/* Department Head */}
                                 <div>

@@ -1,6 +1,7 @@
 import React from "react";
 import { Head, useForm } from "@inertiajs/react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
+import AIDescriptionField from "@/Components/AIDescriptionField";
 
 export default function Create({ auth, users, departments }) {
     const { data, setData, post, processing, errors, reset } = useForm({
@@ -70,30 +71,20 @@ export default function Create({ auth, users, departments }) {
                                 )}
                             </div>
 
-                            {/* Description */}
-                            <div>
-                                <label
-                                    htmlFor="description"
-                                    className="block text-sm font-medium text-gray-700"
-                                >
-                                    Description
-                                </label>
-                                <textarea
-                                    id="description"
-                                    rows={4}
-                                    value={data.description}
-                                    onChange={(e) =>
-                                        setData("description", e.target.value)
-                                    }
-                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                                    placeholder="Enter task description"
-                                />
-                                {errors.description && (
-                                    <p className="mt-1 text-sm text-red-600">
-                                        {errors.description}
-                                    </p>
-                                )}
-                            </div>
+                            {/* AI-Enhanced Description */}
+                            <AIDescriptionField
+                                title={data.title}
+                                value={data.description}
+                                onChange={(value) =>
+                                    setData("description", value)
+                                }
+                                type="task"
+                                context={{ priority: data.priority }}
+                                label="Description"
+                                placeholder="Enter task description or click 'AI Suggest' for auto-generated content..."
+                                error={errors.description}
+                                rows={4}
+                            />
 
                             {/* Assigned To & Department */}
                             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
