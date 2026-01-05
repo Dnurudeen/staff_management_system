@@ -1,6 +1,6 @@
 import { useState } from "react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
-import { Head, router } from "@inertiajs/react";
+import { Head, router, Link } from "@inertiajs/react";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 import Button from "@/Components/Button";
 import Modal from "@/Components/Modal";
@@ -10,6 +10,9 @@ import {
     UserCircleIcon,
     CalendarIcon,
     FlagIcon,
+    FolderIcon,
+    ChatBubbleLeftIcon,
+    EyeIcon,
 } from "@heroicons/react/24/outline";
 
 export default function Kanban({ auth, tasks }) {
@@ -167,6 +170,22 @@ export default function Kanban({ auth, tasks }) {
                         {task.department && (
                             <div className="text-xs text-gray-500">
                                 {task.department.name}
+                            </div>
+                        )}
+
+                        {/* Project */}
+                        {task.project && (
+                            <div className="flex items-center text-xs text-indigo-600">
+                                <FolderIcon className="h-3.5 w-3.5 mr-1" />
+                                <span>{task.project.name}</span>
+                            </div>
+                        )}
+
+                        {/* Comments Count */}
+                        {task.comments_count > 0 && (
+                            <div className="flex items-center text-xs text-gray-400">
+                                <ChatBubbleLeftIcon className="h-3.5 w-3.5 mr-1" />
+                                <span>{task.comments_count}</span>
                             </div>
                         )}
                     </div>
@@ -458,6 +477,17 @@ export default function Kanban({ auth, tasks }) {
                                 }}
                             >
                                 Close
+                            </Button>
+                            <Button
+                                variant="secondary"
+                                onClick={() =>
+                                    router.visit(
+                                        route("tasks.show", selectedTask.id)
+                                    )
+                                }
+                            >
+                                <EyeIcon className="h-4 w-4 mr-1" />
+                                View Details
                             </Button>
                             <Button
                                 onClick={() =>

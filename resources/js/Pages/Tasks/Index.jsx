@@ -8,14 +8,12 @@ import {
     PencilIcon,
     TrashIcon,
     FolderIcon,
+    EyeIcon,
+    ChatBubbleLeftIcon,
 } from "@heroicons/react/24/outline";
 
 export default function Index({ auth, tasks }) {
     const [updatingStatus, setUpdatingStatus] = useState(null);
-
-    // Debug: Log the tasks prop to see what we're receiving
-    console.log("Tasks prop:", tasks);
-    console.log("Tasks data:", tasks?.data);
 
     const handleStatusUpdate = (taskId, newStatus) => {
         setUpdatingStatus(taskId);
@@ -45,8 +43,11 @@ export default function Index({ auth, tasks }) {
             label: "Title",
             sortable: true,
             render: (value, task) => (
-                <div>
-                    <div className="font-medium text-gray-900">
+                <Link
+                    href={route("tasks.show", task.id)}
+                    className="block hover:bg-gray-50 -m-2 p-2 rounded transition-colors"
+                >
+                    <div className="font-medium text-gray-900 hover:text-indigo-600">
                         {task.title}
                     </div>
                     {task.description && (
@@ -55,7 +56,14 @@ export default function Index({ auth, tasks }) {
                             {task.description.length > 100 && "..."}
                         </div>
                     )}
-                </div>
+                    {task.comments_count > 0 && (
+                        <div className="flex items-center mt-1 text-xs text-gray-400">
+                            <ChatBubbleLeftIcon className="h-3.5 w-3.5 mr-1" />
+                            {task.comments_count} comment
+                            {task.comments_count !== 1 ? "s" : ""}
+                        </div>
+                    )}
+                </Link>
             ),
         },
         {
@@ -198,6 +206,13 @@ export default function Index({ auth, tasks }) {
             label: "Actions",
             render: (value, task) => (
                 <div className="flex items-center space-x-2">
+                    <Link
+                        href={route("tasks.show", task.id)}
+                        className="text-gray-500 hover:text-indigo-600 transition-colors"
+                        title="View Task"
+                    >
+                        <EyeIcon className="h-5 w-5" />
+                    </Link>
                     <Link
                         href={route("tasks.edit", task.id)}
                         className="text-indigo-600 hover:text-indigo-900 transition-colors"

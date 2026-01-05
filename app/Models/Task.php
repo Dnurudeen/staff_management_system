@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Task extends Model
 {
@@ -25,7 +26,7 @@ class Task extends Model
     protected function casts(): array
     {
         return [
-            'due_date' => 'date',
+            'due_date' => 'date:Y-m-d',
             'completed_at' => 'datetime',
             'attachments' => 'array',
         ];
@@ -80,6 +81,33 @@ class Task extends Model
     public function project(): BelongsTo
     {
         return $this->belongsTo(Project::class);
+    }
+
+    /**
+     * Get the comments for this task.
+     */
+    public function comments(): HasMany
+    {
+        return $this->hasMany(TaskComment::class);
+    }
+
+    /**
+     * Get root comments (not replies) for this task.
+     */
+    public function rootComments(): HasMany
+    {
+        return $this->hasMany(TaskComment::class)
+            ->whereNull('parent_id')
+            ->with('user', 'replies')
+            ->orderBy('created_at', 'desc');
+    }
+
+    /**
+     * Get the count of comments for this task.
+     */
+    public function getCommentsCountAttribute(): int
+    {
+        return $this->comments()->count();
     }
 
     // Scopes

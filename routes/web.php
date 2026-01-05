@@ -6,6 +6,7 @@ use App\Http\Controllers\DepartmentController;
 use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\LeaveRequestController;
 use App\Http\Controllers\TaskController;
+use App\Http\Controllers\TaskCommentController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\PerformanceReviewController;
 use App\Http\Controllers\ConversationController;
@@ -104,6 +105,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::resource('tasks', TaskController::class);
     Route::get('tasks/board/kanban', [TaskController::class, 'kanban'])->name('tasks.kanban');
     Route::post('tasks/{task}/update-status', [TaskController::class, 'updateTaskStatus'])->name('tasks.update-status');
+
+    // Task Comments
+    Route::prefix('tasks/{task}/comments')->group(function () {
+        Route::get('/', [TaskCommentController::class, 'index'])->name('task-comments.index');
+        Route::post('/', [TaskCommentController::class, 'store'])->name('task-comments.store');
+        Route::put('/{comment}', [TaskCommentController::class, 'update'])->name('task-comments.update');
+        Route::delete('/{comment}', [TaskCommentController::class, 'destroy'])->name('task-comments.destroy');
+        Route::post('/{comment}/attachments', [TaskCommentController::class, 'uploadAttachments'])->name('task-comments.attachments.upload');
+        Route::delete('/{comment}/attachments', [TaskCommentController::class, 'deleteAttachment'])->name('task-comments.attachments.delete');
+    });
 
     // Projects
     Route::resource('projects', ProjectController::class);

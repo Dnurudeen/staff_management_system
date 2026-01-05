@@ -38,7 +38,8 @@ class TaskController extends Controller
 
     public function index(Request $request)
     {
-        $query = Task::with(['assignedUser', 'assignedByUser', 'department', 'project']);
+        $query = Task::with(['assignedUser', 'assignedByUser', 'department', 'project'])
+            ->withCount('comments');
 
         if (auth()->user()->isStaff()) {
             $query->where('assigned_to', auth()->user()->id);
@@ -123,22 +124,57 @@ class TaskController extends Controller
     public function show(Task $task)
     {
         $task->load(['assignedUser', 'assignedByUser', 'department', 'project']);
-        return Inertia::render('Tasks/Show', ['task' => $task]);
+
+        // Get users in the same organization for mentions
+        $organizationId = auth()->user()->organization_id;
+        $users = User::where('organization_id', $organizationId)
+            ->select('id', 'name', 'email', 'avatar', 'role')
+            ->get();
+
+        return Inertia::render('Tasks/Show', [
+            'task' => $task,
+            'users' => $users,
+        ]);
     }
 
     public function update(Request $request, Task $task)
     {
-        $validated = $request->validate([
-            'title' => 'required|string|max:255',
-            'description' => 'nullable|string|max:2000',
-            'project_id' => 'nullable|exists:projects,id',
-            'priority' => ['required', Rule::in(['low', 'medium', 'high', 'urgent'])],
-            'status' => ['required', Rule::in(['pending', 'in_progress', 'completed', 'cancelled'])],
-            'due_date' => 'nullable|date',
-        ]);
+        $isStaff = auth()->user()->isStaff();
+
+        // Staff can only update status
+        if ($isStaff) {
+            $validated = $request->validate([
+                'status' => ['required', Rule::in(['pending', 'in_progress', 'completed', 'cancelled'])],
+            ]);
+        } else {
+            // Admins/Managers can update all fields
+            $validated = $request->validate([
+                'title' => 'required|string|max:255',
+                'description' => 'nullable|string|max:2000',
+                'assigned_to' => 'required|exists:users,id',
+                'department_id' => 'nullable|exists:departments,id',
+                'project_id' => 'nullable|exists:projects,id',
+                'priority' => ['required', Rule::in(['low', 'medium', 'high', 'urgent'])],
+                'status' => ['required', Rule::in(['pending', 'in_progress', 'completed', 'cancelled'])],
+                'due_date' => 'nullable|date',
+            ]);
+
+            // Convert empty strings to null for nullable fields
+            if (empty($validated['department_id'])) {
+                $validated['department_id'] = null;
+            }
+            if (empty($validated['project_id'])) {
+                $validated['project_id'] = null;
+            }
+        }
 
         if ($validated['status'] === 'completed' && $task->status !== 'completed') {
             $validated['completed_at'] = now();
+        }
+
+        // If status is changed from completed, clear completed_at
+        if ($validated['status'] !== 'completed' && $task->status === 'completed') {
+            $validated['completed_at'] = null;
         }
 
         $task->update($validated);
@@ -153,7 +189,8 @@ class TaskController extends Controller
 
     public function kanban(Request $request)
     {
-        $query = Task::with(['assignedUser', 'assignedByUser', 'department']);
+        $query = Task::with(['assignedUser', 'assignedByUser', 'department', 'project'])
+            ->withCount('comments');
 
         if (auth()->user()->isStaff()) {
             $query->where('assigned_to', auth()->user()->id);

@@ -102,4 +102,28 @@ class NotificationService
     {
         return self::create($user, 'general', $title, $message, $data);
     }
+
+    /**
+     * Create a task comment notification.
+     */
+    public static function taskComment(User $user, string $title, string $message, int $taskId, int $commentId)
+    {
+        return self::create($user, 'task_comment', $title, $message, [
+            'task_id' => $taskId,
+            'comment_id' => $commentId,
+            'url' => route('tasks.show', $taskId),
+        ]);
+    }
+
+    /**
+     * Create a mention notification.
+     */
+    public static function taskMention(User $user, string $title, string $message, int $taskId, int $commentId)
+    {
+        return self::create($user, 'mention', $title, $message, [
+            'task_id' => $taskId,
+            'comment_id' => $commentId,
+            'url' => route('tasks.show', $taskId),
+        ]);
+    }
 }
