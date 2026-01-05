@@ -12,6 +12,7 @@ import {
     StarIcon,
     Squares2X2Icon,
     BuildingOfficeIcon,
+    FolderIcon,
 } from "@heroicons/react/24/outline";
 import {
     HomeIcon as HomeIconSolid,
@@ -26,6 +27,7 @@ import {
     StarIcon as StarIconSolid,
     Squares2X2Icon as Squares2X2IconSolid,
     BuildingOfficeIcon as BuildingOfficeIconSolid,
+    FolderIcon as FolderIconSolid,
 } from "@heroicons/react/24/solid";
 
 export default function Sidebar({ collapsed = false, onToggle }) {
@@ -54,6 +56,13 @@ export default function Sidebar({ collapsed = false, onToggle }) {
             icon: CalendarDaysIcon,
             iconSolid: CalendarDaysIconSolid,
             current: route().current("leave-requests.*"),
+        },
+        {
+            name: "Projects",
+            href: route("projects.index"),
+            icon: FolderIcon,
+            iconSolid: FolderIconSolid,
+            current: route().current("projects.*"),
         },
         {
             name: "Tasks",

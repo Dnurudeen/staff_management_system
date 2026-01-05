@@ -83,4 +83,23 @@ class NotificationService
             'url' => route('attendance.index'),
         ]);
     }
+
+    /**
+     * Create a project notification.
+     */
+    public static function project(User $user, string $title, string $message, int $projectId)
+    {
+        return self::create($user, 'project', $title, $message, [
+            'project_id' => $projectId,
+            'url' => route('projects.show', $projectId),
+        ]);
+    }
+
+    /**
+     * Create a general notification.
+     */
+    public static function general(User $user, string $title, string $message, array $data = [])
+    {
+        return self::create($user, 'general', $title, $message, $data);
+    }
 }

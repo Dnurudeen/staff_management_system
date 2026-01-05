@@ -163,6 +163,23 @@ class User extends Authenticatable
         return $this->hasMany(Task::class, 'assigned_by');
     }
 
+    public function projects(): BelongsToMany
+    {
+        return $this->belongsToMany(Project::class, 'project_user')
+            ->withPivot('role')
+            ->withTimestamps();
+    }
+
+    public function createdProjects(): HasMany
+    {
+        return $this->hasMany(Project::class, 'created_by');
+    }
+
+    public function managedProjects(): HasMany
+    {
+        return $this->hasMany(Project::class, 'manager_id');
+    }
+
     public function performanceReviews(): HasMany
     {
         return $this->hasMany(PerformanceReview::class);

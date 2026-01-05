@@ -16,17 +16,20 @@ export function useAISuggestion(type = "general", debounceMs = 500) {
     const [isLoading, setIsLoading] = useState(false);
     const [confidence, setConfidence] = useState(0);
     const [isAvailable, setIsAvailable] = useState(true);
+    const [error, setError] = useState(null);
     const timeoutRef = useRef(null);
     const abortControllerRef = useRef(null);
 
-    // Check service availability on mount
+    // Check service availability on mount (don't block UI though)
     useEffect(() => {
-        checkAIServiceHealth().then(setIsAvailable);
+        checkAIServiceHealth()
+            .then(setIsAvailable)
+            .catch(() => setIsAvailable(false));
     }, []);
 
     const fetchSuggestion = useCallback(
         async (title, context = null) => {
-            if (!title || title.length < 3 || !isAvailable) {
+            if (!title || title.length < 3) {
                 setSuggestion("");
                 setAlternatives([]);
                 setConfidence(0);
@@ -43,6 +46,9 @@ export function useAISuggestion(type = "general", debounceMs = 500) {
                 clearTimeout(timeoutRef.current);
             }
 
+            // Clear any previous errors
+            setError(null);
+
             // Debounce the request
             timeoutRef.current = setTimeout(async () => {
                 setIsLoading(true);
@@ -54,25 +60,40 @@ export function useAISuggestion(type = "general", debounceMs = 500) {
                         type,
                         context
                     );
-                    setSuggestion(result.suggestion || "");
-                    setAlternatives(result.alternatives || []);
-                    setConfidence(result.confidence || 0);
-                } catch (error) {
-                    if (error.name !== "AbortError") {
-                        console.error("Suggestion error:", error);
+
+                    // Check if we got a valid response
+                    if (result.suggestion) {
+                        setSuggestion(result.suggestion);
+                        setAlternatives(result.alternatives || []);
+                        setConfidence(result.confidence || 0);
+                        setIsAvailable(true);
+                    } else {
+                        // Empty response usually means service issue
+                        setError(
+                            "Could not generate suggestion. Please try again."
+                        );
+                    }
+                } catch (err) {
+                    if (err.name !== "AbortError") {
+                        console.error("Suggestion error:", err);
+                        setError(
+                            "AI service unavailable. Please try again later."
+                        );
+                        setIsAvailable(false);
                     }
                 } finally {
                     setIsLoading(false);
                 }
             }, debounceMs);
         },
-        [type, debounceMs, isAvailable]
+        [type, debounceMs]
     );
 
     const clearSuggestion = useCallback(() => {
         setSuggestion("");
         setAlternatives([]);
         setConfidence(0);
+        setError(null);
     }, []);
 
     // Cleanup on unmount
@@ -93,6 +114,7 @@ export function useAISuggestion(type = "general", debounceMs = 500) {
         isLoading,
         confidence,
         isAvailable,
+        error,
         fetchSuggestion,
         clearSuggestion,
     };

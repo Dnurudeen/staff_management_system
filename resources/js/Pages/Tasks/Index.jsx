@@ -3,7 +3,12 @@ import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { Head, router, Link } from "@inertiajs/react";
 import DataTable from "@/Components/DataTable";
 import Button from "@/Components/Button";
-import { PlusIcon, PencilIcon, TrashIcon } from "@heroicons/react/24/outline";
+import {
+    PlusIcon,
+    PencilIcon,
+    TrashIcon,
+    FolderIcon,
+} from "@heroicons/react/24/outline";
 
 export default function Index({ auth, tasks }) {
     const [updatingStatus, setUpdatingStatus] = useState(null);
@@ -52,6 +57,24 @@ export default function Index({ auth, tasks }) {
                     )}
                 </div>
             ),
+        },
+        {
+            key: "project",
+            label: "Project",
+            render: (value, task) => {
+                if (!task.project) {
+                    return <span className="text-gray-400 text-sm">-</span>;
+                }
+                return (
+                    <Link
+                        href={route("projects.show", task.project.id)}
+                        className="inline-flex items-center text-sm text-indigo-600 hover:text-indigo-900"
+                    >
+                        <FolderIcon className="h-4 w-4 mr-1" />
+                        {task.project.name}
+                    </Link>
+                );
+            },
         },
         {
             key: "priority",

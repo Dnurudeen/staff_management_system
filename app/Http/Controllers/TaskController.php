@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Task;
 use App\Models\User;
 use App\Models\Department;
+use App\Models\Project;
 use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -14,18 +15,30 @@ class TaskController extends Controller
 {
     public function create()
     {
-        $users = User::select('id', 'name', 'role')->get();
-        $departments = Department::select('id', 'name')->get();
+        $organizationId = auth()->user()->organization_id;
+
+        $users = User::where('organization_id', $organizationId)
+            ->select('id', 'name', 'role')
+            ->get();
+        $departments = Department::where('organization_id', $organizationId)
+            ->select('id', 'name')
+            ->get();
+        $projects = Project::where('organization_id', $organizationId)
+            ->whereIn('status', ['planning', 'active'])
+            ->select('id', 'name')
+            ->orderBy('name')
+            ->get();
 
         return Inertia::render('Tasks/Create', [
             'users' => $users,
             'departments' => $departments,
+            'projects' => $projects,
         ]);
     }
 
     public function index(Request $request)
     {
-        $query = Task::with(['assignedUser', 'assignedByUser', 'department']);
+        $query = Task::with(['assignedUser', 'assignedByUser', 'department', 'project']);
 
         if (auth()->user()->isStaff()) {
             $query->where('assigned_to', auth()->user()->id);
@@ -56,12 +69,14 @@ class TaskController extends Controller
             'description' => 'nullable|string|max:2000',
             'assigned_to' => 'required|exists:users,id',
             'department_id' => 'nullable|exists:departments,id',
+            'project_id' => 'nullable|exists:projects,id',
             'priority' => ['required', Rule::in(['low', 'medium', 'high', 'urgent'])],
             'due_date' => 'nullable|date|after_or_equal:today',
         ]);
 
         $validated['assigned_by'] = auth()->user()->id;
         $validated['status'] = 'pending';
+        $validated['organization_id'] = auth()->user()->organization_id;
 
         $task = Task::create($validated);
 
@@ -82,20 +97,32 @@ class TaskController extends Controller
 
     public function edit(Task $task)
     {
-        $task->load(['assignedUser', 'assignedByUser', 'department']);
-        $users = User::select('id', 'name', 'role')->get();
-        $departments = Department::select('id', 'name')->get();
+        $organizationId = auth()->user()->organization_id;
+
+        $task->load(['assignedUser', 'assignedByUser', 'department', 'project']);
+        $users = User::where('organization_id', $organizationId)
+            ->select('id', 'name', 'role')
+            ->get();
+        $departments = Department::where('organization_id', $organizationId)
+            ->select('id', 'name')
+            ->get();
+        $projects = Project::where('organization_id', $organizationId)
+            ->whereIn('status', ['planning', 'active'])
+            ->select('id', 'name')
+            ->orderBy('name')
+            ->get();
 
         return Inertia::render('Tasks/Edit', [
             'task' => $task,
             'users' => $users,
             'departments' => $departments,
+            'projects' => $projects,
         ]);
     }
 
     public function show(Task $task)
     {
-        $task->load(['assignedUser', 'assignedByUser', 'department']);
+        $task->load(['assignedUser', 'assignedByUser', 'department', 'project']);
         return Inertia::render('Tasks/Show', ['task' => $task]);
     }
 
@@ -104,6 +131,7 @@ class TaskController extends Controller
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'description' => 'nullable|string|max:2000',
+            'project_id' => 'nullable|exists:projects,id',
             'priority' => ['required', Rule::in(['low', 'medium', 'high', 'urgent'])],
             'status' => ['required', Rule::in(['pending', 'in_progress', 'completed', 'cancelled'])],
             'due_date' => 'nullable|date',

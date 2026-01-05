@@ -1,8 +1,15 @@
 import React from "react";
 import { Head, useForm } from "@inertiajs/react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
+import { FolderIcon } from "@heroicons/react/24/outline";
 
-export default function Edit({ auth, task, users, departments }) {
+export default function Edit({
+    auth,
+    task,
+    users,
+    departments,
+    projects = [],
+}) {
     const isStaff = auth.user.role === "staff";
     const canEditAllFields = !isStaff;
 
@@ -11,6 +18,7 @@ export default function Edit({ auth, task, users, departments }) {
         description: task.description || "",
         assigned_to: task.assigned_to || "",
         department_id: task.department_id || "",
+        project_id: task.project_id || "",
         priority: task.priority || "medium",
         status: task.status || "pending",
         due_date: task.due_date || "",
@@ -173,6 +181,45 @@ export default function Edit({ auth, task, users, departments }) {
                             {/* Admin-only fields */}
                             {canEditAllFields && (
                                 <>
+                                    {/* Project Selection */}
+                                    <div>
+                                        <label
+                                            htmlFor="project_id"
+                                            className="block text-sm font-medium text-gray-700"
+                                        >
+                                            <FolderIcon className="h-4 w-4 inline mr-1" />
+                                            Project (Optional)
+                                        </label>
+                                        <select
+                                            id="project_id"
+                                            value={data.project_id}
+                                            onChange={(e) =>
+                                                setData(
+                                                    "project_id",
+                                                    e.target.value
+                                                )
+                                            }
+                                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                                        >
+                                            <option value="">
+                                                No project (standalone task)
+                                            </option>
+                                            {projects.map((project) => (
+                                                <option
+                                                    key={project.id}
+                                                    value={project.id}
+                                                >
+                                                    {project.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        {errors.project_id && (
+                                            <p className="mt-1 text-sm text-red-600">
+                                                {errors.project_id}
+                                            </p>
+                                        )}
+                                    </div>
+
                                     {/* Assigned To & Department */}
                                     <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                                         <div>
@@ -340,6 +387,12 @@ export default function Edit({ auth, task, users, departments }) {
                                     <strong>Assigned to:</strong>{" "}
                                     {task.assigned_user?.name || "N/A"}
                                 </p>
+                                {task.project && (
+                                    <p className="text-sm text-gray-600">
+                                        <strong>Project:</strong>{" "}
+                                        {task.project.name}
+                                    </p>
+                                )}
                                 {task.department && (
                                     <p className="text-sm text-gray-600">
                                         <strong>Department:</strong>{" "}

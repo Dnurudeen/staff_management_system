@@ -1,5 +1,9 @@
 import { useState, useCallback } from "react";
-import { SparklesIcon, ArrowPathIcon } from "@heroicons/react/24/outline";
+import {
+    SparklesIcon,
+    ArrowPathIcon,
+    ExclamationTriangleIcon,
+} from "@heroicons/react/24/outline";
 import { useAISuggestion, useAICompletion } from "@/Hooks/useAI";
 import AISuggestionBox from "./AISuggestionBox";
 import AIInput from "./AIInput";
@@ -23,6 +27,7 @@ export default function AIDescriptionField({
 }) {
     const [showSuggestion, setShowSuggestion] = useState(false);
     const [hasAcceptedSuggestion, setHasAcceptedSuggestion] = useState(false);
+    const [serviceError, setServiceError] = useState(null);
 
     // AI hooks
     const {
@@ -31,6 +36,7 @@ export default function AIDescriptionField({
         isLoading: suggestionLoading,
         confidence,
         isAvailable,
+        error: aiError,
         fetchSuggestion,
         clearSuggestion,
     } = useAISuggestion(type);
@@ -43,9 +49,13 @@ export default function AIDescriptionField({
         acceptCompletion,
     } = useAICompletion("description", type);
 
+    // Update serviceError when aiError changes
+    const displayError = serviceError || aiError;
+
     // Generate suggestion when title changes (with debounce)
-    const handleGenerateSuggestion = useCallback(() => {
+    const handleGenerateSuggestion = useCallback(async () => {
         if (title && title.length >= 3) {
+            setServiceError(null);
             setShowSuggestion(true);
             setHasAcceptedSuggestion(false);
             fetchSuggestion(title, context);
@@ -112,15 +122,13 @@ export default function AIDescriptionField({
                     {required && <span className="text-red-500 ml-1">*</span>}
                 </label>
 
-                {isAvailable &&
-                    title &&
-                    title.length >= 3 &&
-                    !hasAcceptedSuggestion && (
-                        <button
-                            type="button"
-                            onClick={handleGenerateSuggestion}
-                            disabled={suggestionLoading}
-                            className={`
+                {/* Always show AI button when title >= 3 chars (regardless of service availability) */}
+                {title && title.length >= 3 && !hasAcceptedSuggestion && (
+                    <button
+                        type="button"
+                        onClick={handleGenerateSuggestion}
+                        disabled={suggestionLoading}
+                        className={`
                             inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-full
                             transition-all duration-200 transform hover:scale-105
                             ${
@@ -129,16 +137,34 @@ export default function AIDescriptionField({
                                     : "bg-gradient-to-r from-indigo-500 to-purple-500 text-white hover:from-indigo-600 hover:to-purple-600 shadow-md hover:shadow-lg"
                             }
                         `}
-                        >
-                            {suggestionLoading ? (
-                                <ArrowPathIcon className="h-3.5 w-3.5 mr-1.5 animate-spin" />
-                            ) : (
-                                <SparklesIcon className="h-3.5 w-3.5 mr-1.5" />
-                            )}
-                            {suggestionLoading ? "Generating..." : "AI Suggest"}
-                        </button>
-                    )}
+                    >
+                        {suggestionLoading ? (
+                            <ArrowPathIcon className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                        ) : (
+                            <SparklesIcon className="h-3.5 w-3.5 mr-1.5" />
+                        )}
+                        {suggestionLoading ? "Generating..." : "AI Suggest"}
+                    </button>
+                )}
             </div>
+
+            {/* Service Error Message */}
+            {displayError && (
+                <div className="flex items-center p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-700">
+                    <ExclamationTriangleIcon className="h-5 w-5 mr-2 flex-shrink-0" />
+                    <span>{displayError}</span>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setServiceError(null);
+                            clearSuggestion();
+                        }}
+                        className="ml-auto text-amber-500 hover:text-amber-700"
+                    >
+                        ×
+                    </button>
+                </div>
+            )}
 
             {/* AI Suggestion Box */}
             {showSuggestion && (suggestion || suggestionLoading) && (

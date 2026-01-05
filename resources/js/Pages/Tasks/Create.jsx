@@ -2,13 +2,15 @@ import React from "react";
 import { Head, useForm } from "@inertiajs/react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import AIDescriptionField from "@/Components/AIDescriptionField";
+import { FolderIcon } from "@heroicons/react/24/outline";
 
-export default function Create({ auth, users, departments }) {
+export default function Create({ auth, users, departments, projects = [] }) {
     const { data, setData, post, processing, errors, reset } = useForm({
         title: "",
         description: "",
         assigned_to: "",
         department_id: "",
+        project_id: "",
         priority: "medium",
         due_date: "",
     });
@@ -85,6 +87,46 @@ export default function Create({ auth, users, departments }) {
                                 error={errors.description}
                                 rows={4}
                             />
+
+                            {/* Project Selection */}
+                            <div>
+                                <label
+                                    htmlFor="project_id"
+                                    className="block text-sm font-medium text-gray-700"
+                                >
+                                    <FolderIcon className="h-4 w-4 inline mr-1" />
+                                    Project (Optional)
+                                </label>
+                                <select
+                                    id="project_id"
+                                    value={data.project_id}
+                                    onChange={(e) =>
+                                        setData("project_id", e.target.value)
+                                    }
+                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                                >
+                                    <option value="">
+                                        No project (standalone task)
+                                    </option>
+                                    {projects.map((project) => (
+                                        <option
+                                            key={project.id}
+                                            value={project.id}
+                                        >
+                                            {project.name}
+                                        </option>
+                                    ))}
+                                </select>
+                                {errors.project_id && (
+                                    <p className="mt-1 text-sm text-red-600">
+                                        {errors.project_id}
+                                    </p>
+                                )}
+                                <p className="mt-1 text-xs text-gray-500">
+                                    Optionally assign this task to a project for
+                                    better organisation
+                                </p>
+                            </div>
 
                             {/* Assigned To & Department */}
                             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
