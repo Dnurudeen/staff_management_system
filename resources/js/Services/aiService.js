@@ -11,12 +11,14 @@ const AI_SERVICE_URL =
  * @param {string} title - The title to generate description for
  * @param {string} type - Type: 'task', 'meeting', 'department', 'general'
  * @param {object} context - Additional context (priority, duration, etc.)
+ * @param {boolean} regenerate - Force a different suggestion (for rewrite functionality)
  * @returns {Promise<{suggestion: string, alternatives: string[], confidence: number}>}
  */
 export async function suggestDescription(
     title,
     type = "general",
-    context = null
+    context = null,
+    regenerate = false
 ) {
     try {
         const response = await fetch(
@@ -30,6 +32,7 @@ export async function suggestDescription(
                     title,
                     type,
                     context,
+                    regenerate,
                 }),
             }
         );

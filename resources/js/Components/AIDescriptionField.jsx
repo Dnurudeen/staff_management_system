@@ -58,17 +58,17 @@ export default function AIDescriptionField({
             setServiceError(null);
             setShowSuggestion(true);
             setHasAcceptedSuggestion(false);
-            fetchSuggestion(title, context);
+            fetchSuggestion(title, context, false);
         }
     }, [title, context, fetchSuggestion]);
 
-    // Regenerate suggestion (force new request)
+    // Regenerate suggestion (force new request with different output)
     const handleRegenerateSuggestion = useCallback(() => {
         if (title && title.length >= 3) {
             clearSuggestion();
             // Small delay to show the loading state
             setTimeout(() => {
-                fetchSuggestion(title, context);
+                fetchSuggestion(title, context, true);
             }, 100);
         }
     }, [title, context, fetchSuggestion, clearSuggestion]);

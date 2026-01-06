@@ -28,7 +28,7 @@ export function useAISuggestion(type = "general", debounceMs = 500) {
     }, []);
 
     const fetchSuggestion = useCallback(
-        async (title, context = null) => {
+        async (title, context = null, regenerate = false) => {
             if (!title || title.length < 3) {
                 setSuggestion("");
                 setAlternatives([]);
@@ -58,7 +58,8 @@ export function useAISuggestion(type = "general", debounceMs = 500) {
                     const result = await suggestDescription(
                         title,
                         type,
-                        context
+                        context,
+                        regenerate
                     );
 
                     // Check if we got a valid response
